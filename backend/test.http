@@ -1,0 +1,39 @@
+### Create Patient
+POST http://localhost:5000/api/patients
+Content-Type: application/json
+
+{
+  "patientId": "P001",
+  "name": "James Osei",
+  "age": 45,
+  "condition": "Post-Op Cardiac",
+  "ward": "ICU"
+}
+
+### Get All Patients
+GET http://localhost:5000/api/patients
+
+### Post Fake Vitals (simulates ESP32)
+POST http://localhost:5000/api/vitals/P001
+Content-Type: application/json
+
+{
+  "heartRate": 115,
+  "spo2": 91,
+  "temperature": 38.8,
+  "respRate": 26,
+  "systolic": 95,
+  "diastolic": 62
+}
+
+### Ask AI Doctor
+POST http://localhost:5000/api/ai/P001
+Content-Type: application/json
+
+{
+  "query": "What is wrong with this patient and what should I do?",
+  "askedBy": "nurse"
+}
+
+### Health Check
+GET http://localhost:5000/health
