@@ -8,8 +8,8 @@ backend/node_modules/
 frontend-web/node_modules/
 frontend-mobile/node_modules/
 
-Build outputs
-frontend-web/dist/
+#Build outputs
+frontend-web/.next/
 frontend-mobile/dist/
 frontend-web/build/
 frontend-mobile/build/
