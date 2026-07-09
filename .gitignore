@@ -1,23 +1,27 @@
 # Environment variables - NEVER commit these
 backend/.env
-# frontend/.env
+frontend-web/.env
+frontend-mobile/.env
 
 # Dependencies
 backend/node_modules/
-# frontend/node_modules/
+frontend-web/node_modules/
+frontend-mobile/node_modules/
 
-# Build outputs
-# frontend/dist/
-# frontend/build/
+Build outputs
+frontend-web/dist/
+frontend-mobile/dist/
+frontend-web/build/
+frontend-mobile/build/
 
-# OS files
-# .DS_Store
-# Thumbs.db
+OS files
+.DS_Store
+Thumbs.db
 
-# Logs
-# *.log
-# npm-debug.log*
+Logs
+*.log
+npm-debug.log*
 
-# Editor
-# .vscode/
-# .idea/
+Editor
+.vscode/
+.idea/
