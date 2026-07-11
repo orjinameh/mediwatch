@@ -33,8 +33,8 @@ async function start() {
   await connectDB();
   server.listen(PORT, () => {
     console.log(`🚀 MediWatch Backend running on port ${PORT}`);
-    console.log(`📡 WebSocket: ws://localhost:${PORT}`);
-    console.log(`🌐 REST API:  http://localhost:${PORT}/api`);
+    console.log(`📡 WebSocket: ws://mediwatch-backend.onrender.com`);
+    console.log(`🌐 REST API:  https://mediwatch-backend.onrender.com/api`);
   });
   initWebSocket(server);
   initMQTT();

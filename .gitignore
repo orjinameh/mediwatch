@@ -1,10 +1,14 @@
 # Environment variables - NEVER commit these
 backend/.env
 frontend-web/.env
+frontend-web/.env.local
+backend/.env.local
 frontend-mobile/.env
 
 # Dependencies
 backend/node_modules/
+backend/package-lock.json
+frontend-web/package-lock.json
 frontend-web/node_modules/
 frontend-mobile/node_modules/
 
