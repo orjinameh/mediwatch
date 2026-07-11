@@ -3,10 +3,10 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import { WS } from '@/lib/theme';
 
 export function useWebSocket() {
-  const ws = useRef<WebSocket | null>(null);
+  const ws  = useRef<WebSocket | null>(null);
   const [connected, setConnected] = useState(false);
   const [vitalsMap, setVitalsMap] = useState<Record<string, any>>({});
-  const [alerts, setAlerts] = useState<any[]>([]);
+  const [alerts, setAlerts]       = useState<any[]>([]);
 
   useEffect(() => {
     const connect = () => {
