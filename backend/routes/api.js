@@ -1,7 +1,7 @@
 const router = require('express').Router();
 const auth   = require('../core/auth');
 const { calcNEWS2 } = require('../core/news2');
-const { broadcastAIResponse } = require('../core/websocket');
+const { broadcastAIResponse, broadcastVitals } = require('../core/websocket');
 const { Patient, Vitals, Alert, AILog } = require('../db/models');
 const { randomUUID } = require('crypto');
 
@@ -70,6 +70,7 @@ router.post('/vitals/:patientId', auth, async (req, res) => {
   try {
     const news2 = calcNEWS2(req.body);
     const v = await Vitals.create({ patientId: req.params.patientId, ...req.body, news2Score: news2.total, news2Level: news2.level });
+    broadcastVitals(req.params.patientId, { ...v.toObject(), news2 });
     res.status(201).json({ success: true, data: v, news2 });
   } catch (e) { res.status(400).json({ success: false, error: e.message }); }
 });
