@@ -2,9 +2,11 @@
 import Icon from '@/components/Icon';
 import { useEffect, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import { PURPLE, PURPLE_DARK, news2Color } from '@/lib/theme';
+import { PURPLE, PURPLE_DARK, news2Color, isStale } from '@/lib/theme';
 import { patientApi, vitalsApi, aiApi, alertApi } from '@/lib/api';
 import { useWebSocket } from '@/hooks/useWebSocket';
+import { useNow } from '@/hooks/useNow';
+import ECGWaveform from '@/components/ECGWaveform';
 import BottomNav from '@/components/BottomNav';
 import ProtectedRoute from '@/components/ProtectedRoute';
 
@@ -33,7 +35,8 @@ export default function PatientDetailPage() {
   const [tab,       setTab]       = useState<'vitals'|'ai'|'alerts'>('vitals');
   const [patAlerts, setPatAlerts] = useState<any[]>([]);
   const [deleting,  setDeleting]  = useState(false);
-  const { vitalsMap, subscribe } = useWebSocket();
+  const [aiErr,    setAiErr]    = useState('');
+  const { vitalsMap, alerts: wsAlerts, subscribe } = useWebSocket();
 
   useEffect(() => {
     if (!id) return;
@@ -55,19 +58,30 @@ export default function PatientDetailPage() {
     if (id && vitalsMap[id]) setVitals({ ...vitalsMap[id], timestamp: vitalsMap[id].timestamp || new Date().toISOString() });
   }, [vitalsMap, id]);
 
-  // Re-render every second so we can detect when the device stops sending
-  const [now, setNow] = useState(Date.now());
-  useEffect(() => { const t = setInterval(() => setNow(Date.now()), 1000); return () => clearInterval(t); }, []);
-  const STALE_MS = 15000;
+  const now = useNow(1000);
 
-  const askAI = async () => {
-    if (!aiQuery.trim()) return;
-    setAiLoad(true);
-    const res = await aiApi.ask(id, aiQuery, 'nurse');
+  // Add live alerts for this patient as they arrive
+  useEffect(() => {
+    const mine = wsAlerts.filter(a => a.patientId === id);
+    if (!mine.length) return;
+    setPatAlerts(prev => {
+      const known = new Set(prev.map(x => String(x._id)));
+      const fresh = mine.filter(a => !known.has(String(a._id || a.alertId))).map(a => ({ ...a, _id: a._id || a.alertId, acknowledged: false }));
+      return fresh.length ? [...fresh, ...prev] : prev;
+    });
+  }, [wsAlerts, id]);
+
+  const askAI = async (question?: string) => {
+    const q = (question ?? aiQuery).trim();
+    if (!q || aiLoad) return;
+    setAiLoad(true); setAiErr('');
+    const res = await aiApi.ask(id, q);
     if (res.success) {
       setAiResp(res.data.response);
-      setAiHistory(h => [{ query: aiQuery, response: res.data.response, timestamp: new Date() }, ...h.slice(0,9)]);
+      setAiHistory(h => [{ query: q, response: res.data.response, timestamp: new Date() }, ...h.slice(0,9)]);
       setAiQuery('');
+    } else {
+      setAiErr(res.error || 'The AI assistant is unavailable. Please contact the doctor directly.');
     }
     setAiLoad(false);
   };
@@ -75,7 +89,8 @@ export default function PatientDetailPage() {
   const handleDelete = async () => {
     if (!confirm(`Remove ${patient?.name} from monitoring?`)) return;
     setDeleting(true);
-    await patientApi.delete(id);
+    const r = await patientApi.delete(id);
+    if (!r.success) { setDeleting(false); alert(r.error || 'Could not remove patient'); return; }
     router.push('/patients');
   };
 
@@ -85,9 +100,9 @@ export default function PatientDetailPage() {
   };
 
   const lastTs  = vitals?.timestamp ? new Date(vitals.timestamp).getTime() : 0;
-  const offline = !lastTs || now - lastTs > STALE_MS;
+  const offline = isStale(vitals, now);
   const V = offline ? null : vitals;
-  const nc = news2Color(V?.news2Score || 0);
+  const nc = V ? news2Color(V.news2Score || 0) : '#9CA3AF';
   const statusLabel = ['CRITICAL','HIGH'].includes(V?.news2Level) ? 'attention' : 'stable';
 
   if (!patient) return (
@@ -100,12 +115,12 @@ export default function PatientDetailPage() {
 
   return (
     <ProtectedRoute>
-      <div style={{ minHeight:'100vh', background:'#F8F5FF', maxWidth:430, margin:'0 auto' }}>
+      <div className="mw-shell">
 
         {/* Header */}
         <div style={{ background:`linear-gradient(135deg, ${PURPLE_DARK}, ${PURPLE})`, padding:'52px 20px 28px', borderRadius:'0 0 30px 30px' }}>
           <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:14 }}>
-            <button onClick={() => router.back()} style={{ background:'rgba(255,255,255,0.2)', border:'none', borderRadius:10, width:36, height:36, color:'white', fontSize:18, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center' }}><Icon name="arrowLeft" /></button>
+            <button onClick={() => router.back()} aria-label="Go back" style={{ background:'rgba(255,255,255,0.2)', border:'none', borderRadius:10, width:36, height:36, color:'white', fontSize:18, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center' }}><Icon name="arrowLeft" /></button>
             <button onClick={handleDelete} disabled={deleting} style={{ background:'rgba(239,68,68,0.3)', border:'1px solid rgba(239,68,68,0.5)', borderRadius:10, padding:'6px 12px', color:'white', fontSize:12, cursor:'pointer' }}>
               {deleting ? '...' : <><Icon name="trash" /> Remove</>}
             </button>
@@ -138,7 +153,7 @@ export default function PatientDetailPage() {
           ))}
         </div>
 
-        <div style={{ padding:'12px 16px', paddingBottom:100 }}>
+        <div className="mw-pad">
 
           {/* VITALS TAB */}
           {tab === 'vitals' && <>
@@ -165,6 +180,15 @@ export default function PatientDetailPage() {
               </div>
             </div>
 
+            <div style={{ background:'white', borderRadius:16, padding:16, marginBottom:14, boxShadow:'0 2px 12px rgba(107,33,168,0.06)' }}>
+              <div style={{ display:'flex', justifyContent:'space-between', marginBottom:10 }}>
+                <span style={{ fontSize:14, fontWeight:700, color:'#111' }}>ECG</span>
+              </div>
+              {!offline && V?.ecgWaveform?.length > 1
+                ? <div style={{ background:'#FDF2F8', borderRadius:12, padding:10 }}><ECGWaveform data={V.ecgWaveform} /></div>
+                : <div style={{ color:'#9CA3AF', fontSize:12, padding:'8px 0' }}>{offline ? 'No signal' : 'No ECG data received from the device'}</div>}
+            </div>
+
             <div style={{ background:'white', borderRadius:16, padding:16, boxShadow:'0 2px 12px rgba(107,33,168,0.06)', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
               <div>
                 <div style={{ fontSize:13, color:'#9CA3AF', marginBottom:4 }}>NEWS2 Early Warning Score</div>
@@ -172,7 +196,7 @@ export default function PatientDetailPage() {
                 <div style={{ fontSize:11, color:'#9CA3AF' }}>Last updated: {lastTs ? new Date(lastTs).toLocaleTimeString() : '—'}</div>
               </div>
               <div style={{ background:nc+'20', borderRadius:14, padding:'12px 20px', textAlign:'center' }}>
-                <div style={{ fontSize:14, fontWeight:700, color:nc }}>{V?.news2Level || 'LOW'}</div>
+                <div style={{ fontSize:14, fontWeight:700, color:nc }}>{V?.news2Level || '—'}</div>
                 <div style={{ fontSize:11, color:'#9CA3AF', marginTop:2 }}>Risk Level</div>
               </div>
             </div>
@@ -182,18 +206,19 @@ export default function PatientDetailPage() {
           {tab === 'ai' && <>
             <div style={{ background:'white', borderRadius:16, padding:16, marginBottom:14, boxShadow:'0 2px 12px rgba(107,33,168,0.06)' }}>
               <div style={{ fontSize:14, fontWeight:700, color:'#111', marginBottom:4 }}><Icon name="bot" /> AI Assistant Doctor</div>
-              <div style={{ fontSize:12, color:'#9CA3AF', marginBottom:16 }}>Ask about {patient.name}'s condition. Context: current vitals + NEWS2 score {V?.news2Score ?? '—'}.</div>
+              <div style={{ fontSize:12, color:'#9CA3AF', marginBottom:16 }}>Ask about {patient.name}'s condition. Context: latest stored vitals + NEWS2 score.{offline && lastTs ? ` Device is offline, the last reading was at ${new Date(lastTs).toLocaleTimeString()}.` : ''}</div>
 
               {/* Quick prompts */}
               <div style={{ display:'flex', flexWrap:'wrap', gap:8, marginBottom:16 }}>
                 {['What is the current risk?','Suggest immediate actions','What vitals are abnormal?','Draft escalation note'].map(q => (
-                  <button key={q} onClick={() => { setAiQuery(q); setTimeout(askAI, 100); }}
+                  <button key={q} onClick={() => askAI(q)}
                     style={{ background:'#F3E8FF', color:PURPLE, border:'none', borderRadius:20, padding:'6px 12px', fontSize:12, cursor:'pointer' }}>
                     {q}
                   </button>
                 ))}
               </div>
 
+              {aiErr && <div role="alert" style={{ background:'#FEF2F2', border:'1px solid #FECACA', color:'#B91C1C', borderRadius:12, padding:12, marginBottom:14, fontSize:13 }}>{aiErr}</div>}
               {aiResp && (
                 <div style={{ background:'#F3E8FF', borderRadius:12, padding:14, marginBottom:14, fontSize:13, color:'#4B0082', lineHeight:1.7, borderLeft:`3px solid ${PURPLE}` }}>
                   {aiResp}
@@ -203,9 +228,10 @@ export default function PatientDetailPage() {
               <div style={{ display:'flex', gap:8 }}>
                 <input value={aiQuery} onChange={e => setAiQuery(e.target.value)}
                   onKeyDown={e => e.key==='Enter' && askAI()}
+                  aria-label="Question for the AI assistant"
                   placeholder="Ask about this patient..."
                   style={{ flex:1, border:'1.5px solid #E9D5FF', borderRadius:12, padding:'10px 14px', fontSize:13, outline:'none', color:'#111' }} />
-                <button onClick={askAI} disabled={aiLoad}
+                <button onClick={() => askAI()} disabled={aiLoad}
                   style={{ background:PURPLE, color:'white', border:'none', borderRadius:12, padding:'10px 18px', fontSize:13, fontWeight:600, cursor:aiLoad?'not-allowed':'pointer', opacity:aiLoad?0.7:1 }}>
                   {aiLoad ? '...' : 'Send'}
                 </button>

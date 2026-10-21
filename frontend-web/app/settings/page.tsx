@@ -9,7 +9,6 @@ import ProtectedRoute from '@/components/ProtectedRoute';
 
 export default function SettingsPage() {
   const { user, logout } = useAuth();
-  const [tab, setTab] = useState<'profile'|'security'|'about'>('profile');
   const [pwForm, setPwForm] = useState({ currentPassword:'', newPassword:'', confirmPassword:'' });
   const [pwError, setPwError]     = useState('');
   const [pwSuccess, setPwSuccess] = useState('');
@@ -20,6 +19,7 @@ export default function SettingsPage() {
     setPwForm(f => ({ ...f, [k]: e.target.value }));
 
   const handleChangePassword = async () => {
+    if (pwLoading) return;
     if (!pwForm.currentPassword || !pwForm.newPassword) { setPwError('All fields required'); return; }
     if (pwForm.newPassword.length < 6) { setPwError('New password must be at least 6 characters'); return; }
     if (pwForm.newPassword !== pwForm.confirmPassword) { setPwError('Passwords do not match'); return; }
@@ -37,18 +37,9 @@ export default function SettingsPage() {
   const inp: any = { border:'1.5px solid #E5E7EB', borderRadius:12, padding:'12px 16px', fontSize:15, color:'#111', outline:'none', width:'100%', background:'white' };
   const card: any = { background:'white', borderRadius:20, padding:20, marginBottom:14, boxShadow:'0 2px 12px rgba(107,33,168,0.06)' };
 
-  const MENU = [
-    { icon:'user', label:'Profile',           sub:'Your account information' },
-    { icon:'lock', label:'Security',          sub:'Password & privacy' },
-    { icon:'bell', label:'Notifications',     sub:'Alert preferences' },
-    { icon:'hospital', label:'Clinic Settings',   sub:'Ward and facility info' },
-    { icon:'help', label:'Help & Support',    sub:'Documentation and contact' },
-    { icon:'info', label:'About MediWatch AI', sub:'Version 1.0.0 — IoT Patient Monitor' },
-  ];
-
   return (
     <ProtectedRoute>
-      <div style={{ minHeight:'100vh', background:'#F8F5FF', maxWidth:430, margin:'0 auto' }}>
+      <div className="mw-shell">
 
         {/* Header */}
         <div style={{ background:`linear-gradient(135deg, ${PURPLE_DARK}, ${PURPLE})`, padding:'52px 20px 28px', borderRadius:'0 0 30px 30px' }}>
@@ -67,14 +58,14 @@ export default function SettingsPage() {
           </div>
         </div>
 
-        <div style={{ padding:'16px', paddingBottom:100 }}>
+        <div className="mw-pad">
 
           {/* Change Password section */}
           <div style={card}>
             <div style={{ fontSize:14, fontWeight:700, color:'#111', marginBottom:4 }}><Icon name="lock" /> Change Password</div>
             <div style={{ fontSize:12, color:'#9CA3AF', marginBottom:16 }}>Update your account password</div>
 
-            {pwError   && <div style={{ background:'#FEE2E2', color:'#DC2626', padding:'10px 14px', borderRadius:10, marginBottom:12, fontSize:13 }}>{pwError}</div>}
+            {pwError   && <div role="alert" style={{ background:'#FEE2E2', color:'#DC2626', padding:'10px 14px', borderRadius:10, marginBottom:12, fontSize:13 }}>{pwError}</div>}
             {pwSuccess && <div style={{ background:'#DCFCE7', color:'#16A34A', padding:'10px 14px', borderRadius:10, marginBottom:12, fontSize:13 }}><Icon name="check" /> {pwSuccess}</div>}
 
             <div style={{ marginBottom:12 }}>
@@ -82,7 +73,7 @@ export default function SettingsPage() {
               <div style={{ display:'flex', alignItems:'center', border:'1.5px solid #E5E7EB', borderRadius:12, padding:'12px 16px', gap:10 }}>
                 <input type={showPw ? 'text' : 'password'} value={pwForm.currentPassword} onChange={setPw('currentPassword')} placeholder="Enter current password"
                   style={{ border:'none', outline:'none', flex:1, fontSize:15, color:'#111', background:'transparent' }} />
-                <span onClick={() => setShowPw(s=>!s)} style={{ cursor:'pointer', fontSize:16, color:'#9CA3AF' }}><Icon name={showPw ? 'eyeOff' : 'eye'} /></span>
+                <button type="button" onClick={() => setShowPw(s=>!s)} aria-label={showPw ? 'Hide password' : 'Show password'} style={{ cursor:'pointer', fontSize:16, color:'#9CA3AF', background:'none', border:'none', padding:4 }}><Icon name={showPw ? 'eyeOff' : 'eye'} /></button>
               </div>
             </div>
 
@@ -103,17 +94,14 @@ export default function SettingsPage() {
             </button>
           </div>
 
-          {/* Menu items */}
-          {MENU.filter(m => m.label !== 'Security').map(({ icon, label, sub }) => (
-            <div key={label} style={{ background:'white', borderRadius:16, padding:16, marginBottom:10, display:'flex', alignItems:'center', gap:14, cursor:'pointer', boxShadow:'0 2px 12px rgba(107,33,168,0.05)' }}>
-              <div style={{ width:44, height:44, borderRadius:12, background:PURPLE+'15', display:'flex', alignItems:'center', justifyContent:'center', fontSize:22 }}><Icon name={icon} /></div>
-              <div style={{ flex:1 }}>
-                <div style={{ fontWeight:600, fontSize:15, color:'#111' }}>{label}</div>
-                <div style={{ fontSize:12, color:'#9CA3AF' }}>{sub}</div>
-              </div>
-              <span style={{ fontSize:18, color:'#9CA3AF' }}>›</span>
+          {/* About */}
+          <div style={{ ...card, display:'flex', alignItems:'center', gap:14 }}>
+            <div style={{ width:44, height:44, borderRadius:12, background:PURPLE+'15', display:'flex', alignItems:'center', justifyContent:'center', fontSize:22, color:PURPLE }}><Icon name="info" /></div>
+            <div style={{ flex:1 }}>
+              <div style={{ fontWeight:600, fontSize:15, color:'#111' }}>About MediWatch AI</div>
+              <div style={{ fontSize:12, color:'#9CA3AF' }}>Version 1.0.0 · IoT Patient Monitor</div>
             </div>
-          ))}
+          </div>
 
           {/* Sign out */}
           <button onClick={logout}

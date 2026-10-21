@@ -1,39 +1,35 @@
-### Create Patient
+### Log in (copy the token from the response into @token below)
+POST http://localhost:5000/api/auth/login
+Content-Type: application/json
+
+{ "email": "you@example.com", "password": "your-password" }
+
+@token = PASTE_TOKEN_HERE
+
+### Create patient
 POST http://localhost:5000/api/patients
 Content-Type: application/json
+Authorization: Bearer {{token}}
 
-{
-  "patientId": "P001",
-  "name": "James Osei",
-  "age": 45,
-  "condition": "Post-Op Cardiac",
-  "ward": "ICU"
-}
+{ "name": "James Osei", "age": 45, "condition": "Post-Op Cardiac", "ward": "ICU" }
 
-### Get All Patients
+### Get all patients
 GET http://localhost:5000/api/patients
+Authorization: Bearer {{token}}
 
-### Post Fake Vitals (simulates ESP32)
-POST http://localhost:5000/api/vitals/P001
+### Post a manual vitals reading (use the patientId returned when you created the patient)
+POST http://localhost:5000/api/vitals/PATIENT_ID
 Content-Type: application/json
+Authorization: Bearer {{token}}
 
-{
-  "heartRate": 115,
-  "spo2": 91,
-  "temperature": 38.8,
-  "respRate": 26,
-  "systolic": 95,
-  "diastolic": 62
-}
+{ "heartRate": 115, "spo2": 91, "temperature": 38.8, "respRate": 26, "systolic": 95, "diastolic": 62 }
 
-### Ask AI Doctor
-POST http://localhost:5000/api/ai/P001
+### Ask the AI assistant
+POST http://localhost:5000/api/ai/PATIENT_ID
 Content-Type: application/json
+Authorization: Bearer {{token}}
 
-{
-  "query": "What is wrong with this patient and what should I do?",
-  "askedBy": "nurse"
-}
+{ "query": "What is the current risk and what should I do?" }
 
-### Health Check
+### Health check
 GET http://localhost:5000/health

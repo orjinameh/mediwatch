@@ -37,7 +37,7 @@ export default function SignupPage() {
   const rowStyle: any = { display:'flex', alignItems:'center', border:'1.5px solid #E5E7EB', borderRadius:12, padding:'12px 16px', marginBottom:14, gap:10 };
 
   return (
-    <div style={{ minHeight:'100vh', background:`linear-gradient(160deg, ${PURPLE_DARK} 0%, ${PURPLE} 100%)`, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', padding:20 }}>
+    <div style={{ minHeight:'100dvh', background:`linear-gradient(160deg, ${PURPLE_DARK} 0%, ${PURPLE} 100%)`, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', padding:20 }}>
 
       <div style={{ width:80, height:80, background:'white', borderRadius:22, display:'flex', alignItems:'center', justifyContent:'center', marginBottom:16, fontSize:40, boxShadow:'0 8px 32px rgba(0,0,0,0.2)' }}><Icon name="cross" color="#6B21A8" /></div>
       <h1 style={{ color:'white', fontSize:26, fontWeight:800, marginBottom:4 }}>Create Account</h1>
@@ -64,7 +64,6 @@ export default function SignupPage() {
             style={{ border:'none', outline:'none', width:'100%', fontSize:15, color:'#111', background:'transparent', appearance:'none' as const }}>
             <option value="doctor">Doctor</option>
             <option value="nurse">Nurse</option>
-            <option value="admin">Admin</option>
           </select>
         </div>
 
@@ -72,7 +71,7 @@ export default function SignupPage() {
         <div style={rowStyle}>
           <span style={{ fontSize:18 }}><Icon name="lock" /></span>
           <input type={showPw ? 'text' : 'password'} value={form.password} onChange={set('password')} placeholder="Password (min 6 chars)" style={inputStyle} />
-          <span onClick={() => setShowPw(s=>!s)} style={{ cursor:'pointer', fontSize:16, color:'#9CA3AF' }}><Icon name={showPw ? 'eyeOff' : 'eye'} /></span>
+          <button type="button" onClick={() => setShowPw(s=>!s)} aria-label={showPw ? 'Hide password' : 'Show password'} style={{ cursor:'pointer', fontSize:16, color:'#9CA3AF', background:'none', border:'none', padding:4 }}><Icon name={showPw ? 'eyeOff' : 'eye'} /></button>
         </div>
 
         {/* Confirm password */}

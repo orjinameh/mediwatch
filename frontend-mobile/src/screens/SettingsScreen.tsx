@@ -5,21 +5,13 @@ import {
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { PURPLE, PURPLE_DARK } from '../theme';
-
-const ITEMS = [
-  { icon: '👤', label: 'Profile',            sub: 'Manage your account' },
-  { icon: '🔔', label: 'Notifications',       sub: 'Alert preferences' },
-  { icon: '🔒', label: 'Privacy & Security',  sub: 'Data and access' },
-  { icon: '🏥', label: 'Clinic Settings',     sub: 'Ward and facility' },
-  { icon: '❓', label: 'Help & Support',      sub: 'Get assistance' },
-  { icon: 'ℹ️', label: 'About MediWatch AI',  sub: 'Version 1.0.0' },
-];
+import Icon from '../components/Icon';
 
 export default function SettingsScreen({ navigation }: any) {
   const [doctor, setDoctor] = useState<any>(null);
 
   useEffect(() => {
-    AsyncStorage.getItem('doctor').then(d => { if (d) setDoctor(JSON.parse(d)); });
+    AsyncStorage.getItem('doctor').then(d => { if (d) { try { setDoctor(JSON.parse(d).user); } catch (_) {} } });
   }, []);
 
   const logout = () => {
@@ -29,7 +21,8 @@ export default function SettingsScreen({ navigation }: any) {
         text: 'Sign Out', style: 'destructive',
         onPress: async () => {
           await AsyncStorage.removeItem('doctor');
-          navigation.replace('Login');
+          // Login lives in the root stack, one level above the tabs
+          (navigation.getParent() || navigation).reset({ index: 0, routes: [{ name: 'Login' }] });
         },
       },
     ]);
@@ -47,30 +40,25 @@ export default function SettingsScreen({ navigation }: any) {
         {/* Doctor profile card */}
         <View style={styles.profileCard}>
           <View style={styles.profileAvatar}>
-            <Text style={{ fontSize: 32 }}>👨‍⚕️</Text>
+            <Icon name="stethoscope" size={30} color={PURPLE} />
           </View>
           <View>
-            <Text style={styles.profileName}>{doctor?.name || 'Doctor'}</Text>
+            <Text style={styles.profileName}>{doctor?.name || ''}</Text>
             <Text style={styles.profileEmail}>{doctor?.email || ''}</Text>
             <View style={styles.roleBadge}>
-              <Text style={styles.roleText}>Medical Staff</Text>
+              <Text style={styles.roleText}>{doctor?.role ? doctor.role.charAt(0).toUpperCase() + doctor.role.slice(1) : 'Staff'}</Text>
             </View>
           </View>
         </View>
 
         <View style={styles.content}>
-          {ITEMS.map(({ icon, label, sub }) => (
-            <TouchableOpacity key={label} style={styles.item}>
-              <View style={styles.itemIcon}>
-                <Text style={{ fontSize: 22 }}>{icon}</Text>
-              </View>
-              <View style={styles.itemInfo}>
-                <Text style={styles.itemLabel}>{label}</Text>
-                <Text style={styles.itemSub}>{sub}</Text>
-              </View>
-              <Text style={styles.chevron}>›</Text>
-            </TouchableOpacity>
-          ))}
+          <View style={styles.item}>
+            <View style={styles.itemIcon}><Icon name="info" size={22} color={PURPLE} /></View>
+            <View style={styles.itemInfo}>
+              <Text style={styles.itemLabel}>About MediWatch AI</Text>
+              <Text style={styles.itemSub}>Version 1.0.0 · IoT Patient Monitor</Text>
+            </View>
+          </View>
 
           <TouchableOpacity style={styles.logoutBtn} onPress={logout}>
             <Text style={styles.logoutText}>Sign Out</Text>
@@ -91,13 +79,12 @@ const styles = StyleSheet.create({
   profileEmail: { fontSize: 13, color: '#9CA3AF', marginBottom: 6 },
   roleBadge: { backgroundColor: PURPLE + '15', paddingHorizontal: 10, paddingVertical: 3, borderRadius: 20, alignSelf: 'flex-start' },
   roleText: { fontSize: 11, color: PURPLE, fontWeight: '600' },
-  content: { paddingHorizontal: 16, paddingBottom: 40 },
+  content: { paddingHorizontal: 16, paddingBottom: 40, maxWidth: 720, width: '100%', alignSelf: 'center' },
   item: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'white', borderRadius: 16, padding: 16, marginBottom: 10, shadowColor: PURPLE, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 8, elevation: 2 },
   itemIcon: { width: 44, height: 44, borderRadius: 12, backgroundColor: PURPLE + '15', alignItems: 'center', justifyContent: 'center', marginRight: 14 },
   itemInfo: { flex: 1 },
   itemLabel: { fontSize: 15, fontWeight: '600', color: '#111', marginBottom: 2 },
   itemSub: { fontSize: 12, color: '#9CA3AF' },
-  chevron: { fontSize: 20, color: '#9CA3AF' },
   logoutBtn: { backgroundColor: '#FEE2E2', borderRadius: 16, padding: 16, alignItems: 'center', marginTop: 8 },
   logoutText: { color: '#DC2626', fontSize: 15, fontWeight: '700' },
 });

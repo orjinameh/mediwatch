@@ -5,13 +5,13 @@ import {
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { PURPLE, PURPLE_DARK } from '../theme';
+import Icon from '../components/Icon';
 import { apiFetch } from '../hooks/useApi';
 
 export default function LoginScreen({ navigation }: any) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
-  const [remember, setRemember] = useState(false);
 
   const handleLogin = async () => {
     if (!email || !password) { Alert.alert('Error', 'Please fill in all fields'); return; }
@@ -19,7 +19,7 @@ export default function LoginScreen({ navigation }: any) {
     try {
       const res = await apiFetch('/api/auth/login', {
         method: 'POST',
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ email: email.trim(), password }),
       });
       if (res.success) {
         await AsyncStorage.setItem('doctor', JSON.stringify(res.data));
@@ -39,7 +39,7 @@ export default function LoginScreen({ navigation }: any) {
 
         {/* Logo */}
         <View style={styles.logoBox}>
-          <Text style={styles.logoText}>⚕️</Text>
+          <Icon name="cross" size={40} color={PURPLE} />
         </View>
 
         <Text style={styles.welcome}>welcome back</Text>
@@ -50,7 +50,7 @@ export default function LoginScreen({ navigation }: any) {
         <View style={styles.card}>
           {/* Email */}
           <View style={styles.inputRow}>
-            <Text style={styles.inputIcon}>✉️</Text>
+            <Icon name="mail" size={18} color="#9CA3AF" />
             <TextInput
               style={styles.input}
               placeholder="Email address"
@@ -64,7 +64,7 @@ export default function LoginScreen({ navigation }: any) {
 
           {/* Password */}
           <View style={styles.inputRow}>
-            <Text style={styles.inputIcon}>🔒</Text>
+            <Icon name="lock" size={18} color="#9CA3AF" />
             <TextInput
               style={styles.input}
               placeholder="Password"
@@ -72,18 +72,9 @@ export default function LoginScreen({ navigation }: any) {
               value={password}
               onChangeText={setPassword}
               secureTextEntry
+              onSubmitEditing={handleLogin}
+              returnKeyType="go"
             />
-          </View>
-
-          {/* Remember me */}
-          <View style={styles.rememberRow}>
-            <TouchableOpacity onPress={() => setRemember(r => !r)} style={styles.checkRow}>
-              <View style={[styles.checkbox, remember && styles.checkboxActive]}>
-                {remember && <Text style={{ color: 'white', fontSize: 10 }}>✓</Text>}
-              </View>
-              <Text style={styles.rememberText}>Remember me</Text>
-            </TouchableOpacity>
-            <Text style={[styles.rememberText, { color: PURPLE }]}>Forgotten password</Text>
           </View>
 
           {/* Login button */}
@@ -91,13 +82,6 @@ export default function LoginScreen({ navigation }: any) {
             {loading ? <ActivityIndicator color="white" /> : <Text style={styles.loginBtnText}>Login</Text>}
           </TouchableOpacity>
 
-          <Text style={styles.orText}>or</Text>
-
-          {/* Google */}
-          <TouchableOpacity style={styles.googleBtn}>
-            <Text style={styles.googleG}>G</Text>
-            <Text style={styles.googleText}>Continue with Google</Text>
-          </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -112,7 +96,7 @@ const styles = StyleSheet.create({
   welcome: { color: 'rgba(255,255,255,0.8)', fontSize: 14, marginBottom: 4 },
   title: { color: 'white', fontSize: 28, fontWeight: '700', marginBottom: 6 },
   subtitle: { color: 'rgba(255,255,255,0.7)', fontSize: 14, textAlign: 'center', marginBottom: 32 },
-  card: { backgroundColor: 'white', borderRadius: 24, padding: 24, width: '100%', shadowColor: '#000', shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.3, shadowRadius: 20, elevation: 10 },
+  card: { backgroundColor: 'white', borderRadius: 24, padding: 24, width: '100%', maxWidth: 420, shadowColor: '#000', shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.3, shadowRadius: 20, elevation: 10 },
   inputRow: { flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderColor: '#E5E7EB', borderRadius: 12, paddingHorizontal: 14, paddingVertical: 12, marginBottom: 14, gap: 10 },
   inputIcon: { fontSize: 18 },
   input: { flex: 1, fontSize: 15, color: '#111' },

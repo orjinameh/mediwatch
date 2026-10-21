@@ -1,27 +1,30 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { View, Text, StyleSheet } from 'react-native';
-import { PURPLE } from '../theme';
+import { View, StyleSheet, ActivityIndicator } from 'react-native';
+import { PURPLE, PURPLE_DARK } from '../theme';
+import Icon from '../components/Icon';
+import { getSession } from '../hooks/useApi';
 
 import LoginScreen       from '../screens/LoginScreen';
 import HomeScreen        from '../screens/HomeScreen';
 import PatientsScreen    from '../screens/PatientsScreen';
 import PatientDetailScreen from '../screens/PatientDetailScreen';
 import SettingsScreen    from '../screens/SettingsScreen';
+import AddPatientScreen  from '../screens/AddPatientScreen';
 
 const Stack = createNativeStackNavigator();
 const Tab   = createBottomTabNavigator();
 
 const TAB_ICONS: Record<string, string> = {
-  Home: '🏠', Patients: '👥', Settings: '⚙️',
+  Home: 'home', Patients: 'users', Settings: 'settings',
 };
 
 function TabIcon({ name, focused }: { name: string; focused: boolean }) {
   return (
     <View style={[styles.tabIcon, focused && styles.tabIconActive]}>
-      <Text style={styles.tabEmoji}>{TAB_ICONS[name]}</Text>
+      <Icon name={TAB_ICONS[name]} size={20} color={focused ? 'white' : '#6B7280'} />
     </View>
   );
 }
@@ -51,14 +54,25 @@ function PatientsStack() {
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="PatientsList"  component={PatientsScreen} />
       <Stack.Screen name="PatientDetail" component={PatientDetailScreen} />
+      <Stack.Screen name="AddPatient"    component={AddPatientScreen} />
     </Stack.Navigator>
   );
 }
 
 export default function AppNavigator() {
+  // Restore an existing session instead of always showing the login screen
+  const [initial, setInitial] = useState<'Login' | 'Main' | null>(null);
+  useEffect(() => { getSession().then(s => setInitial(s?.token ? 'Main' : 'Login')); }, []);
+  if (!initial) {
+    return (
+      <View style={{ flex: 1, backgroundColor: PURPLE_DARK, alignItems: 'center', justifyContent: 'center' }}>
+        <ActivityIndicator color="white" size="large" />
+      </View>
+    );
+  }
   return (
     <NavigationContainer>
-      <Stack.Navigator screenOptions={{ headerShown: false }} initialRouteName="Login">
+      <Stack.Navigator screenOptions={{ headerShown: false }} initialRouteName={initial}>
         <Stack.Screen name="Login" component={LoginScreen} />
         <Stack.Screen name="Main"  component={MainTabs} />
       </Stack.Navigator>
@@ -86,5 +100,4 @@ const styles = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center',
   },
   tabIconActive: { backgroundColor: PURPLE },
-  tabEmoji: { fontSize: 20 },
 });

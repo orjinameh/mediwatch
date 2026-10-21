@@ -3,21 +3,24 @@ import {
   View, Text, TextInput, TouchableOpacity, FlatList,
   StyleSheet, SafeAreaView, ActivityIndicator,
 } from 'react-native';
-import { PURPLE, PURPLE_DARK, STATUS_COLORS } from '../theme';
-import { apiFetch, useWebSocket } from '../hooks/useApi';
+import { PURPLE, PURPLE_DARK, STATUS_COLORS, isStale } from '../theme';
+import { apiFetch, useWebSocket, useNow } from '../hooks/useApi';
+import Icon from '../components/Icon';
 
 export default function PatientsScreen({ navigation }: any) {
   const [patients, setPatients] = useState<any[]>([]);
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
   const { vitalsMap, alerts } = useWebSocket();
+  const now = useNow(5000);
+  const [error, setError] = useState('');
 
   useEffect(() => { loadPatients(); }, []);
 
   const loadPatients = async () => {
     try {
       const res = await apiFetch('/api/patients');
-      if (res.success) setPatients(res.data);
+      if (res.success) setPatients(res.data); else setError(res.error || 'Could not load patients');
     } catch (_) {}
     setLoading(false);
   };
@@ -30,22 +33,23 @@ export default function PatientsScreen({ navigation }: any) {
 
   const getStatus = (p: any) => {
     const v = vitalsMap[p.patientId] || p.latestVitals;
-    return v?.news2Level === 'HIGH' || v?.news2Level === 'CRITICAL' ? 'attention' : 'stable';
+    if (!v || isStale(v, now)) return 'offline';
+    return v.news2Level === 'HIGH' || v.news2Level === 'CRITICAL' ? 'attention' : 'stable';
   };
 
   const renderPatient = ({ item: p }: any) => {
-    const v = vitalsMap[p.patientId] || p.latestVitals;
     const sk = getStatus(p);
+    const v = sk === 'offline' ? null : (vitalsMap[p.patientId] || p.latestVitals);
     const st = STATUS_COLORS[sk as keyof typeof STATUS_COLORS];
     return (
       <TouchableOpacity style={styles.patientCard}
         onPress={() => navigation.navigate('PatientDetail', { patientId: p.patientId })}>
         <View style={[styles.avatar, { backgroundColor: PURPLE + '20' }]}>
-          <Text style={{ fontSize: 22 }}>👤</Text>
+          <Icon name="user" size={22} color={PURPLE} />
         </View>
         <View style={styles.info}>
           <Text style={styles.name}>{p.name}</Text>
-          <Text style={styles.sub}>{p.age || '—'} Years · Room {p.patientId?.slice(-3)}</Text>
+          <Text style={styles.sub}>{p.age || '—'} Years · {p.roomNumber ? `Room ${p.roomNumber}` : (p.ward || 'No room')}</Text>
           <Text style={styles.vitalsText}>
             HR {v?.heartRate ? Math.round(v.heartRate) : '—'}{'  '}
             SpO2 {v?.spo2 ? v.spo2.toFixed(0) : '—'}%{'  '}
@@ -71,7 +75,7 @@ export default function PatientsScreen({ navigation }: any) {
         <View style={styles.headerRow}>
           <Text style={styles.title}>Patients</Text>
           <View style={{ position: 'relative' }}>
-            <Text style={{ fontSize: 22 }}>🔔</Text>
+            <Icon name="bell" size={24} color="white" />
             {alerts.length > 0 && (
               <View style={styles.alertBadge}>
                 <Text style={styles.alertBadgeText}>{alerts.length}</Text>
@@ -80,7 +84,7 @@ export default function PatientsScreen({ navigation }: any) {
           </View>
         </View>
         <View style={styles.searchBox}>
-          <Text style={styles.searchIcon}>🔍</Text>
+          <Icon name="search" size={18} color="#9CA3AF" />
           <TextInput
             style={styles.searchInput}
             placeholder="Search patients by name, ID or room"
@@ -93,14 +97,16 @@ export default function PatientsScreen({ navigation }: any) {
 
       {loading ? (
         <ActivityIndicator color={PURPLE} style={{ marginTop: 60 }} />
+      ) : error !== '' ? (
+        <Text style={{ color: '#B91C1C', textAlign: 'center', padding: 24 }}>{error}</Text>
       ) : filtered.length === 0 ? (
         /* Empty state */
         <View style={styles.emptyState}>
-          <Text style={{ fontSize: 80, marginBottom: 16 }}>📋</Text>
+          <View style={{ marginBottom: 16 }}><Icon name="clipboard" size={72} color={PURPLE} /></View>
           <Text style={styles.emptyTitle}>No Patients yet</Text>
           <Text style={styles.emptySub}>Add your first patient and start{'\n'}monitoring their vitals</Text>
-          <TouchableOpacity style={styles.addBtn}>
-            <Text style={styles.addBtnText}>+ Add Patients</Text>
+          <TouchableOpacity style={styles.addBtn} onPress={() => navigation.navigate('AddPatient')}>
+            <Text style={styles.addBtnText}>+ Add Patient</Text>
           </TouchableOpacity>
         </View>
       ) : (
@@ -108,10 +114,10 @@ export default function PatientsScreen({ navigation }: any) {
           data={filtered}
           keyExtractor={p => p._id}
           renderItem={renderPatient}
-          contentContainerStyle={styles.list}
+          contentContainerStyle={[styles.list, { maxWidth: 720, width: '100%', alignSelf: 'center' }]}
           ListFooterComponent={
-            <TouchableOpacity style={styles.addBtn}>
-              <Text style={styles.addBtnText}>+ Add Patients</Text>
+            <TouchableOpacity style={styles.addBtn} onPress={() => navigation.navigate('AddPatient')}>
+              <Text style={styles.addBtnText}>+ Add Patient</Text>
             </TouchableOpacity>
           }
         />

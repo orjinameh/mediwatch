@@ -2,9 +2,10 @@
 import Icon from '@/components/Icon';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { PURPLE, PURPLE_DARK, STATUS } from '@/lib/theme';
+import { PURPLE, PURPLE_DARK, STATUS, isStale } from '@/lib/theme';
 import { patientApi } from '@/lib/api';
 import { useWebSocket } from '@/hooks/useWebSocket';
+import { useNow } from '@/hooks/useNow';
 import BottomNav from '@/components/BottomNav';
 import ProtectedRoute from '@/components/ProtectedRoute';
 
@@ -14,14 +15,17 @@ export default function PatientsPage() {
   const [search,   setSearch]   = useState('');
   const [filter,   setFilter]   = useState('all'); // all | attention | stable
   const [loading,  setLoading]  = useState(true);
+  const [error,    setError]    = useState('');
   const { vitalsMap, alerts } = useWebSocket();
+  const now = useNow(5000);
 
   useEffect(() => {
-    patientApi.list().then(r => { if (r.success) setPatients(r.data); setLoading(false); });
+    patientApi.list().then(r => { if (r.success) setPatients(r.data); else setError(r.error || 'Could not load patients'); setLoading(false); });
   }, []);
 
   const getStatus = (p: any) => {
     const v = vitalsMap[p.patientId] || p.latestVitals;
+    if (!v || isStale(v, now)) return 'offline';
     return ['HIGH','CRITICAL'].includes(v?.news2Level) ? 'attention' : 'stable';
   };
 
@@ -36,7 +40,7 @@ export default function PatientsPage() {
 
   return (
     <ProtectedRoute>
-      <div style={{ minHeight:'100vh', background:'#F8F5FF', maxWidth:430, margin:'0 auto' }}>
+      <div className="mw-shell">
 
         {/* Header */}
         <div style={{ background:`linear-gradient(135deg, ${PURPLE_DARK}, ${PURPLE})`, padding:'52px 20px 24px', borderRadius:'0 0 30px 30px' }}>
@@ -56,18 +60,19 @@ export default function PatientsPage() {
           </div>
         </div>
 
-        <div style={{ padding:'16px', paddingBottom:100 }}>
+        <div className="mw-pad">
 
           {/* Filter tabs */}
-          <div style={{ display:'flex', gap:8, marginBottom:16 }}>
-            {[['all','All',''],['attention','Attention','alert'],['stable','Stable','check']].map(([val, lbl, ic]) => (
+          <div style={{ display:'flex', gap:8, marginBottom:16, flexWrap:'wrap' }}>
+            {[['all','All',''],['attention','Attention','alert'],['stable','Stable','check'],['offline','Offline','activity']].map(([val, lbl, ic]) => (
               <button key={val} onClick={() => setFilter(val)}
-                style={{ flex:1, background:filter===val ? PURPLE : 'white', color:filter===val ? 'white' : '#6B7280', border:`1px solid ${filter===val ? PURPLE : '#E5E7EB'}`, borderRadius:10, padding:'8px 4px', fontSize:12, fontWeight:filter===val ? 700 : 400, cursor:'pointer' }}>
+                style={{ flex:'1 1 70px', background:filter===val ? PURPLE : 'white', color:filter===val ? 'white' : '#6B7280', border:`1px solid ${filter===val ? PURPLE : '#E5E7EB'}`, borderRadius:10, padding:'8px 4px', fontSize:12, fontWeight:filter===val ? 700 : 400, cursor:'pointer' }}>
                 {ic && <Icon name={ic} />} {lbl}
               </button>
             ))}
           </div>
 
+          {error && <div role="alert" style={{ background:'#FEF2F2', border:'1px solid #FECACA', color:'#B91C1C', borderRadius:12, padding:12, marginBottom:12, fontSize:13 }}>{error}</div>}
           {loading ? (
             <div style={{ textAlign:'center', padding:60, color:'#9CA3AF' }}>Loading patients...</div>
           ) : filtered.length === 0 ? (
@@ -89,13 +94,15 @@ export default function PatientsPage() {
           ) : (
             <>
               <p style={{ fontSize:12, color:'#9CA3AF', marginBottom:12 }}>{filtered.length} patient{filtered.length!==1?'s':''}</p>
+              <div className="mw-grid">
               {filtered.map(p => {
-                const v = vitalsMap[p.patientId] || p.latestVitals;
+                const v0 = vitalsMap[p.patientId] || p.latestVitals;
                 const sk = getStatus(p);
+                const v = sk === 'offline' ? null : v0;
                 const st = STATUS[sk];
                 return (
                   <div key={p._id} onClick={() => router.push(`/patients/${p.patientId}`)}
-                    style={{ background:'white', borderRadius:16, padding:'14px 16px', marginBottom:10, display:'flex', alignItems:'center', gap:14, cursor:'pointer', boxShadow:'0 2px 12px rgba(107,33,168,0.06)', borderLeft:`3px solid ${sk==='attention'?'#F59E0B':'#16A34A'}` }}>
+                    style={{ background:'white', borderRadius:16, padding:'14px 16px', marginBottom:0, display:'flex', alignItems:'center', gap:14, cursor:'pointer', boxShadow:'0 2px 12px rgba(107,33,168,0.06)', borderLeft:`3px solid ${sk==='attention'?'#F59E0B':'#16A34A'}` }}>
                     <div style={{ width:50, height:50, borderRadius:'50%', background:PURPLE+'20', display:'flex', alignItems:'center', justifyContent:'center', fontSize:24, flexShrink:0 }}><Icon name="user" /></div>
                     <div style={{ flex:1, minWidth:0 }}>
                       <div style={{ fontWeight:700, fontSize:15, color:'#111', marginBottom:2 }}>{p.name}</div>
@@ -113,6 +120,7 @@ export default function PatientsPage() {
                   </div>
                 );
               })}
+              </div>
               <button onClick={() => router.push('/patients/add')}
                 style={{ width:'100%', background:PURPLE, color:'white', border:'none', borderRadius:14, padding:'15px', fontSize:15, fontWeight:600, cursor:'pointer', marginTop:8, display:'flex', alignItems:'center', justifyContent:'center', gap:8 }}>
                 + Add Patient

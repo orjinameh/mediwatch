@@ -2,6 +2,9 @@ const router = require('express').Router();
 const bcrypt = require('bcryptjs');
 const jwt    = require('jsonwebtoken');
 const { Doctor } = require('../db/models');
+const rateLimit = require('../core/rateLimit');
+const limiter = rateLimit({ max: 20 });
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 const sign = (doc) => jwt.sign(
   { id: doc._id, email: doc.email, name: doc.name, role: doc.role },
@@ -10,25 +13,29 @@ const sign = (doc) => jwt.sign(
 );
 
 // POST /api/auth/signup
-router.post('/signup', async (req, res) => {
+router.post('/signup', limiter, async (req, res) => {
   try {
-    const { name, email, password, role } = req.body;
+    const { password, role } = req.body;
+    const name = String(req.body.name || '').trim();
+    const email = String(req.body.email || '').trim();
     if (!name || !email || !password) return res.status(400).json({ success: false, error: 'Name, email and password are required' });
-    if (password.length < 6) return res.status(400).json({ success: false, error: 'Password must be at least 6 characters' });
+    if (!EMAIL_RE.test(email)) return res.status(400).json({ success: false, error: 'Enter a valid email address' });
+    if (typeof password !== 'string' || password.length < 6) return res.status(400).json({ success: false, error: 'Password must be at least 6 characters' });
     const exists = await Doctor.findOne({ email: email.toLowerCase() });
     if (exists) return res.status(400).json({ success: false, error: 'Email already registered' });
     const hashed = await bcrypt.hash(password, 10);
-    const doc = await Doctor.create({ name, email: email.toLowerCase(), password: hashed, role: role || 'doctor' });
+    const doc = await Doctor.create({ name, email: email.toLowerCase(), password: hashed, role: ['doctor', 'nurse'].includes(role) ? role : 'doctor' });
     const token = sign(doc);
     res.status(201).json({ success: true, data: { token, user: { id: doc._id, name: doc.name, email: doc.email, role: doc.role } } });
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
 
 // POST /api/auth/login
-router.post('/login', async (req, res) => {
+router.post('/login', limiter, async (req, res) => {
   try {
-    const { email, password } = req.body;
-    if (!email || !password) return res.status(400).json({ success: false, error: 'Email and password are required' });
+    const email = String(req.body.email || '').trim();
+    const password = req.body.password;
+    if (!email || !password || typeof password !== 'string') return res.status(400).json({ success: false, error: 'Email and password are required' });
     const doc = await Doctor.findOne({ email: email.toLowerCase() });
     if (!doc) return res.status(401).json({ success: false, error: 'Invalid email or password' });
     const valid = await bcrypt.compare(password, doc.password);

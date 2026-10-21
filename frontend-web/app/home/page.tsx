@@ -2,10 +2,11 @@
 import Icon from '@/components/Icon';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { PURPLE, PURPLE_DARK, STATUS, news2Color } from '@/lib/theme';
+import { PURPLE, PURPLE_DARK, STATUS, news2Color, isStale } from '@/lib/theme';
 import { patientApi, alertApi } from '@/lib/api';
 import { useAuth } from '@/hooks/useAuth';
 import { useWebSocket } from '@/hooks/useWebSocket';
+import { useNow } from '@/hooks/useNow';
 import BottomNav from '@/components/BottomNav';
 import ProtectedRoute from '@/components/ProtectedRoute';
 
@@ -23,41 +24,59 @@ export default function HomePage() {
       .finally(() => setLoading(false));
   }, []);
 
-  useEffect(() => { if (wsAlerts.length) setAlerts(wsAlerts); }, [wsAlerts]);
+  const now = useNow(5000);
+
+  // Merge live alerts into the fetched list instead of replacing it
+  useEffect(() => {
+    if (!wsAlerts.length) return;
+    setAlerts(prev => {
+      const known = new Set(prev.map(a => String(a._id || a.alertId)));
+      const fresh = wsAlerts.filter(a => !known.has(String(a._id || a.alertId)));
+      return fresh.length ? [...fresh, ...prev] : prev;
+    });
+  }, [wsAlerts]);
 
   const hour = new Date().getHours();
   const greeting = hour < 12 ? 'Good Morning,' : hour < 17 ? 'Good Afternoon,' : 'Good Evening,';
 
-  const getLevel = (p: any) => { const v = vitalsMap[p.patientId] || p.latestVitals; return v?.news2Level || 'LOW'; };
+  const latestOf = (p: any) => vitalsMap[p.patientId] || p.latestVitals;
+  // A patient whose device stopped sending is "offline", not "stable"
+  const getLevel = (p: any) => { const v = latestOf(p); return !v || isStale(v, now) ? 'OFFLINE' : (v.news2Level || 'LOW'); };
   const needAttention = patients.filter(p => ['HIGH','CRITICAL'].includes(getLevel(p)));
-  const normal = patients.length - needAttention.length;
+  const offlineCount = patients.filter(p => getLevel(p) === 'OFFLINE').length;
+  const normal = patients.length - needAttention.length - offlineCount;
+  const ago = (v: any) => {
+    if (!v?.timestamp) return 'no data';
+    const m = Math.floor((now - new Date(v.timestamp).getTime()) / 60000);
+    return m < 1 ? 'just now' : m < 60 ? `${m} min ago` : m < 1440 ? `${Math.floor(m/60)} h ago` : `${Math.floor(m/1440)} d ago`;
+  };
 
   const card: any = { background:'white', borderRadius:20, padding:18, marginBottom:14, boxShadow:'0 4px 20px rgba(107,33,168,0.08)' };
 
   const acknowledgeAlert = async (alertId: string) => {
-    await alertApi.acknowledge(alertId);
-    setAlerts(a => a.filter(x => x.alertId !== alertId && x._id !== alertId));
+    const r = await alertApi.acknowledge(alertId);
+    if (r.success) setAlerts(a => a.filter(x => String(x.alertId || x._id) !== String(alertId)));
   };
 
   return (
     <ProtectedRoute>
-      <div style={{ minHeight:'100vh', background:'#F8F5FF', maxWidth:430, margin:'0 auto' }}>
+      <div className="mw-shell">
 
         {/* Header */}
         <div style={{ background:`linear-gradient(135deg, ${PURPLE_DARK}, ${PURPLE})`, padding:'52px 20px 30px', borderRadius:'0 0 30px 30px' }}>
-          <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+          <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', flexWrap:'wrap', gap:12 }}>
             <div>
               <p style={{ color:'rgba(255,255,255,0.8)', fontSize:14, marginBottom:2 }}>{greeting}</p>
-              <h2 style={{ color:'white', fontSize:22, fontWeight:800 }}>Dr. {user?.name || 'Doctor'}</h2>
+              <h2 style={{ color:'white', fontSize:22, fontWeight:800 }}>{user?.role === 'nurse' ? '' : 'Dr. '}{user?.name || 'Staff'}</h2>
             </div>
             <div style={{ display:'flex', alignItems:'center', gap:12 }}>
               {/* Live dot */}
               <div style={{ display:'flex', alignItems:'center', gap:5 }}>
                 <div style={{ width:8, height:8, borderRadius:'50%', background:connected?'#4ADE80':'#9CA3AF', boxShadow:connected?'0 0 8px #4ADE80':'none' }}/>
-                <span style={{ color:'rgba(255,255,255,0.7)', fontSize:11 }}>{connected?'Live':'Offline'}</span>
+                <span style={{ color:'rgba(255,255,255,0.7)', fontSize:11 }}>{connected?'Live':'Disconnected'}</span>
               </div>
               {/* Bell */}
-              <div style={{ position:'relative', cursor:'pointer' }} onClick={() => router.push('/patients')}>
+              <div role="button" tabIndex={0} aria-label={`Alerts (${alerts.length})`} onKeyDown={e => e.key==='Enter' && router.push('/patients')} style={{ position:'relative', cursor:'pointer' }} onClick={() => router.push('/patients')}>
                 <span style={{ fontSize:24 }}><Icon name="bell" /></span>
                 {alerts.length > 0 && (
                   <div style={{ position:'absolute', top:-4, right:-4, background:'#EF4444', borderRadius:'50%', width:18, height:18, display:'flex', alignItems:'center', justifyContent:'center', fontSize:10, color:'white', fontWeight:800 }}>
@@ -71,7 +90,7 @@ export default function HomePage() {
           </div>
         </div>
 
-        <div style={{ padding:'20px 16px', paddingBottom:100 }}>
+        <div className="mw-pad">
 
           {/* Active alerts banner */}
           {alerts.length > 0 && (
@@ -79,7 +98,7 @@ export default function HomePage() {
               <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:8 }}>
                 <span style={{ fontWeight:700, color:'#DC2626', fontSize:14 }}><Icon name="alert" /> Active Alerts ({alerts.length})</span>
               </div>
-              {alerts.slice(0,2).map((a, i) => (
+              {alerts.slice(0,3).map((a, i) => (
                 <div key={i} style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'6px 0', borderTop:'1px solid #FECACA' }}>
                   <span style={{ fontSize:13, color:'#7F1D1D' }}>{a.message || `Patient ${a.patientId} — ${a.level}`}</span>
                   <button onClick={() => acknowledgeAlert(a.alertId || a._id)}
@@ -93,13 +112,14 @@ export default function HomePage() {
           <div style={card}>
             <div style={{ display:'flex', justifyContent:'space-between', marginBottom:14 }}>
               <span style={{ fontWeight:700, fontSize:16, color:'#111' }}>Overview</span>
-              <span style={{ fontSize:13, color:'#9CA3AF' }}>Today</span>
+              <span style={{ fontSize:13, color:'#9CA3AF' }}>{new Date(now).toLocaleDateString()}</span>
             </div>
-            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:10 }}>
+            <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(90px, 1fr))', gap:10 }}>
               {[
                 { icon:'users', label:'Total patients', value:patients.length, color:PURPLE },
                 { icon:'alert', label:'Need Attention',  value:needAttention.length, color:'#F59E0B' },
                 { icon:'check', label:'Normal',           value:normal, color:'#16A34A' },
+                { icon:'activity', label:'Device offline', value:offlineCount, color:'#6B7280' },
               ].map(({ icon, label, value, color }) => (
                 <div key={label} style={{ textAlign:'center', background:'#FAFAFA', borderRadius:14, padding:'12px 8px' }}>
                   <div style={{ fontSize:24, marginBottom:4 }}><Icon name={icon} /></div>
@@ -118,7 +138,7 @@ export default function HomePage() {
                 <span onClick={() => router.push('/patients')} style={{ fontSize:13, color:PURPLE, cursor:'pointer' }}>View all</span>
               </div>
               {needAttention.slice(0,3).map(p => {
-                const v = vitalsMap[p.patientId] || p.latestVitals;
+                const v = latestOf(p);
                 return (
                   <div key={p._id} onClick={() => router.push(`/patients/${p.patientId}`)}
                     style={{ display:'flex', alignItems:'center', gap:12, padding:'11px 0', borderBottom:'1px solid #F3F4F6', cursor:'pointer' }}>
@@ -150,7 +170,7 @@ export default function HomePage() {
               ? <div style={{ textAlign:'center', padding:20, color:'#9CA3AF', fontSize:14 }}>No patients yet. <span onClick={() => router.push('/patients/add')} style={{ color:PURPLE, cursor:'pointer' }}>Add one →</span></div>
               : patients.slice(0,4).map(p => {
                   const level = getLevel(p);
-                  const sk = ['HIGH','CRITICAL'].includes(level) ? 'attention' : 'stable';
+                  const sk = level === 'OFFLINE' ? 'offline' : ['HIGH','CRITICAL'].includes(level) ? 'attention' : 'stable';
                   const st = STATUS[sk];
                   return (
                     <div key={p._id} onClick={() => router.push(`/patients/${p.patientId}`)}
@@ -162,7 +182,7 @@ export default function HomePage() {
                       </div>
                       <div style={{ textAlign:'right' }}>
                         <span style={{ background:st.bg, color:st.color, fontSize:11, fontWeight:600, padding:'4px 10px', borderRadius:20 }}>{st.label}</span>
-                        <div style={{ fontSize:11, color:'#9CA3AF', marginTop:3 }}>just now</div>
+                        <div style={{ fontSize:11, color:'#9CA3AF', marginTop:3 }}>{ago(latestOf(p))}</div>
                       </div>
                     </div>
                   );

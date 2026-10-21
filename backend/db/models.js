@@ -2,10 +2,11 @@ const mongoose = require('mongoose');
 
 const connectDB = async () => {
   try {
+    if (!process.env.MONGODB_URI) throw new Error('MONGODB_URI is not set');
     await mongoose.connect(process.env.MONGODB_URI);
-    console.log('✅ MongoDB Connected');
+    console.log('[db] MongoDB connected');
   } catch (e) {
-    console.error('❌ MongoDB Error:', e.message);
+    console.error('[db] MongoDB error:', e.message);
     process.exit(1);
   }
 };

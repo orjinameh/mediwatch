@@ -7,17 +7,22 @@ const getToken = () => {
 
 export const apiFetch = async (path: string, options: RequestInit = {}) => {
   const token = getToken();
-  const res = await fetch(`${API}${path}`, {
-    ...options,
-    headers: {
-      'Content-Type': 'application/json',
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      ...(options.headers || {}),
-    },
-  });
-  const data = await res.json();
-  // Auto-redirect on 401
-  if (res.status === 401 && typeof window !== 'undefined') {
+  let res: Response;
+  try {
+    res = await fetch(`${API}${path}`, {
+      ...options,
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        ...(options.headers || {}),
+      },
+    });
+  } catch {
+    return { success: false, error: 'Cannot reach the server. Check your connection.' };
+  }
+  const data = await res.json().catch(() => ({ success: false, error: `Server error (${res.status})` }));
+  // Expired session: sign out (but not for failed logins, which also return 401)
+  if (res.status === 401 && !path.startsWith('/api/auth/login') && typeof window !== 'undefined') {
     localStorage.removeItem('mw_token');
     localStorage.removeItem('mw_user');
     window.location.href = '/login';
@@ -58,6 +63,6 @@ export const alertApi = {
 
 // AI helpers
 export const aiApi = {
-  ask:     (id: string, query: string, askedBy = 'nurse') => apiFetch(`/api/ai/${id}`, { method: 'POST', body: JSON.stringify({ query, askedBy }) }),
+  ask:     (id: string, query: string) => apiFetch(`/api/ai/${id}`, { method: 'POST', body: JSON.stringify({ query }) }),
   history: (id: string) => apiFetch(`/api/ai/${id}/history`),
 };

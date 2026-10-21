@@ -1,4 +1,5 @@
 const { WebSocketServer, WebSocket } = require('ws');
+const jwt = require('jsonwebtoken');
 
 let wss = null;
 const clients = new Set();
@@ -7,6 +8,11 @@ const subscriptions = new Map();
 function initWebSocket(server) {
   wss = new WebSocketServer({ server });
   wss.on('connection', (ws, req) => {
+    // Only authenticated users may receive patient data
+    let token = null;
+    try { token = new URL(req.url, 'http://localhost').searchParams.get('token'); } catch (_) {}
+    try { jwt.verify(token || '', process.env.JWT_SECRET); }
+    catch { ws.close(4401, 'Unauthorized'); return; }
     clients.add(ws);
     ws.send(JSON.stringify({ type: 'CONNECTED', message: 'MediWatch WebSocket connected' }));
     ws.on('message', (raw) => {
@@ -29,7 +35,7 @@ function initWebSocket(server) {
     });
     ws.on('error', () => clients.delete(ws));
   });
-  console.log('✅ WebSocket server initialised');
+  console.log('[ws] server initialised');
 }
 
 function send(ws, data) {
