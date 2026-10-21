@@ -51,7 +51,14 @@ export default function PatientDetailPage() {
     });
   }, [id]);
 
-  useEffect(() => { if (id && vitalsMap[id]) setVitals(vitalsMap[id]); }, [vitalsMap, id]);
+  useEffect(() => {
+    if (id && vitalsMap[id]) setVitals({ ...vitalsMap[id], timestamp: vitalsMap[id].timestamp || new Date().toISOString() });
+  }, [vitalsMap, id]);
+
+  // Re-render every second so we can detect when the device stops sending
+  const [now, setNow] = useState(Date.now());
+  useEffect(() => { const t = setInterval(() => setNow(Date.now()), 1000); return () => clearInterval(t); }, []);
+  const STALE_MS = 15000;
 
   const askAI = async () => {
     if (!aiQuery.trim()) return;
@@ -77,7 +84,9 @@ export default function PatientDetailPage() {
     setPatAlerts(a => a.map(x => x._id === alertId ? { ...x, acknowledged: true } : x));
   };
 
-  const V = vitals;
+  const lastTs  = vitals?.timestamp ? new Date(vitals.timestamp).getTime() : 0;
+  const offline = !lastTs || now - lastTs > STALE_MS;
+  const V = offline ? null : vitals;
   const nc = news2Color(V?.news2Score || 0);
   const statusLabel = ['CRITICAL','HIGH'].includes(V?.news2Level) ? 'attention' : 'stable';
 
@@ -133,6 +142,11 @@ export default function PatientDetailPage() {
 
           {/* VITALS TAB */}
           {tab === 'vitals' && <>
+            {offline && (
+              <div style={{ background:'#FEF3C7', border:'1px solid #F59E0B', color:'#92400E', borderRadius:12, padding:'10px 14px', fontSize:12, marginBottom:12 }}>
+                ⚠️ Device offline — no live data{lastTs ? ` since ${new Date(lastTs).toLocaleTimeString()}` : ''}
+              </div>
+            )}
             <div style={{ display:'flex', flexWrap:'wrap', gap:12, marginBottom:14 }}>
               <VCard icon="🫁" label="Respiratory Rate" value={V?.respRate ? Math.round(V.respRate) : '—'} unit="breath/min" color={V?.respRate > 25 ? '#EF4444' : PURPLE} />
               <VCard icon="❤️" label="Heart Rate"       value={V?.heartRate ? Math.round(V.heartRate) : '—'} unit="bpm" color={V?.heartRate > 100 ? '#EF4444' : '#EF4444'} />
@@ -164,7 +178,7 @@ export default function PatientDetailPage() {
               <div>
                 <div style={{ fontSize:13, color:'#9CA3AF', marginBottom:4 }}>NEWS2 Early Warning Score</div>
                 <div style={{ fontSize:36, fontWeight:800, color:nc }}>{V?.news2Score ?? '—'}</div>
-                <div style={{ fontSize:11, color:'#9CA3AF' }}>Last updated: {V?.timestamp ? new Date(V.timestamp).toLocaleTimeString() : '—'}</div>
+                <div style={{ fontSize:11, color:'#9CA3AF' }}>Last updated: {lastTs ? new Date(lastTs).toLocaleTimeString() : '—'}</div>
               </div>
               <div style={{ background:nc+'20', borderRadius:14, padding:'12px 20px', textAlign:'center' }}>
                 <div style={{ fontSize:14, fontWeight:700, color:nc }}>{V?.news2Level || 'LOW'}</div>
