@@ -133,7 +133,7 @@ Rules:
     const gr = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${process.env.GROQ_API_KEY}` },
-      body: JSON.stringify({ model: process.env.GROQ_MODEL || 'llama-3.3-70b-versatile', max_tokens: 1000, messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: query }] }),
+      body: JSON.stringify({ model: process.env.GROQ_MODEL || 'openai/gpt-oss-120b', reasoning_effort: 'low', max_tokens: 2000, messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: query }] }),
     });
     const grData = await gr.json();
     if (!gr.ok) console.error('Groq error:', gr.status, JSON.stringify(grData));
