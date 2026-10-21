@@ -129,24 +129,15 @@ Rules:
 - Never prescribe medications or make definitive diagnoses
 - If NEWS2 is CRITICAL, start your response with ⚠️ URGENT`;
 
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
+    if (!process.env.GROQ_API_KEY) return res.status(500).json({ success: false, error: 'GROQ_API_KEY is not set' });
+    const gr = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01' },
-      body: JSON.stringify({ model: 'claude-sonnet-4-20250514', max_tokens: 1000, system: systemPrompt, messages: [{ role: 'user', content: query }] }),
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${process.env.GROQ_API_KEY}` },
+      body: JSON.stringify({ model: process.env.GROQ_MODEL || 'llama-3.3-70b-versatile', max_tokens: 1000, messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: query }] }),
     });
-    const aiData = await response.json();
-    let aiText = aiData.content?.[0]?.text;
-
-    // Fallback to Groq
-    if (!aiText && process.env.GROQ_API_KEY) {
-      const gr = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${process.env.GROQ_API_KEY}` },
-        body: JSON.stringify({ model: process.env.GROQ_MODEL || 'llama-3.3-70b-versatile', messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: query }] }),
-      });
-      const grData = await gr.json();
-      aiText = grData.choices?.[0]?.message?.content;
-    }
+    const grData = await gr.json();
+    if (!gr.ok) console.error('Groq error:', gr.status, JSON.stringify(grData));
+    let aiText = grData.choices?.[0]?.message?.content;
 
     aiText = aiText || 'Unable to get AI response. Please contact the doctor directly.';
     await AILog.create({ patientId, query, response: aiText, vitalsSnapshot: vitals, news2Score: vitals.news2Score, queryBy: askedBy || 'nurse' });
