@@ -7,6 +7,7 @@ import { patientApi, vitalsApi, aiApi, alertApi } from '@/lib/api';
 import { useWebSocket } from '@/hooks/useWebSocket';
 import { useNow } from '@/hooks/useNow';
 import ECGWaveform from '@/components/ECGWaveform';
+import Markdown from '@/components/Markdown';
 import BottomNav from '@/components/BottomNav';
 import ProtectedRoute from '@/components/ProtectedRoute';
 
@@ -220,8 +221,9 @@ export default function PatientDetailPage() {
 
               {aiErr && <div role="alert" style={{ background:'#FEF2F2', border:'1px solid #FECACA', color:'#B91C1C', borderRadius:12, padding:12, marginBottom:14, fontSize:13 }}>{aiErr}</div>}
               {aiResp && (
-                <div style={{ background:'#F3E8FF', borderRadius:12, padding:14, marginBottom:14, fontSize:13, color:'#4B0082', lineHeight:1.7, borderLeft:`3px solid ${PURPLE}` }}>
-                  {aiResp}
+                <div style={{ background:'#F3E8FF', borderRadius:12, padding:'14px 16px', marginBottom:14, borderLeft:`3px solid ${PURPLE}` }}>
+                  <div style={{ fontSize:11, fontWeight:700, color:PURPLE, marginBottom:8, textTransform:'uppercase', letterSpacing:0.5 }}>AI response · decision support only</div>
+                  <Markdown text={aiResp} />
                 </div>
               )}
 
@@ -243,11 +245,15 @@ export default function PatientDetailPage() {
               <div style={{ background:'white', borderRadius:16, padding:16, boxShadow:'0 2px 12px rgba(107,33,168,0.06)' }}>
                 <div style={{ fontSize:13, fontWeight:700, color:'#111', marginBottom:12 }}>Previous consultations</div>
                 {aiHistory.map((h, i) => (
-                  <div key={i} style={{ borderBottom:'1px solid #F3F4F6', paddingBottom:12, marginBottom:12 }}>
-                    <div style={{ fontSize:12, fontWeight:600, color:PURPLE, marginBottom:4 }}>Q: {h.query}</div>
-                    <div style={{ fontSize:12, color:'#6B7280', lineHeight:1.6 }}>{h.response?.slice(0, 120)}...</div>
-                    <div style={{ fontSize:10, color:'#9CA3AF', marginTop:4 }}>{new Date(h.timestamp).toLocaleString()}</div>
-                  </div>
+                  <details key={h._id || i} style={{ borderBottom:'1px solid #F3F4F6', padding:'10px 0' }}>
+                    <summary style={{ cursor:'pointer', listStyle:'none' }}>
+                      <div style={{ fontSize:12, fontWeight:600, color:PURPLE, marginBottom:2 }}>Q: {h.query}</div>
+                      <div style={{ fontSize:10, color:'#9CA3AF' }}>{new Date(h.timestamp).toLocaleString()} · tap to read the answer</div>
+                    </summary>
+                    <div style={{ background:'#FAF5FF', borderRadius:10, padding:'10px 12px', marginTop:8 }}>
+                      <Markdown text={h.response || ''} />
+                    </div>
+                  </details>
                 ))}
               </div>
             )}

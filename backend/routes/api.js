@@ -1,7 +1,7 @@
 const router = require('express').Router();
 const auth   = require('../core/auth');
 const { calcNEWS2 } = require('../core/news2');
-const { processVitals } = require('../core/processVitals');
+const { processVitals, sanitize, NOT_DEVICE_OFF } = require('../core/processVitals');
 const { broadcastAIResponse } = require('../core/websocket');
 const { Patient, Vitals, Alert, AILog } = require('../db/models');
 
@@ -15,7 +15,7 @@ router.get('/patients', auth, async (req, res) => {
     const patients = await Patient.find({ active: true }).lean();
     const ids = patients.map(p => p.patientId);
     const latest = await Vitals.aggregate([
-      { $match: { patientId: { $in: ids } } },
+      { $match: { patientId: { $in: ids }, ...NOT_DEVICE_OFF } },
       { $sort: { timestamp: -1 } },
       { $group: { _id: '$patientId', doc: { $first: '$$ROOT' } } },
       { $project: { 'doc.ecgWaveform': 0 } },
@@ -62,14 +62,14 @@ router.delete('/patients/:patientId', auth, async (req, res) => {
 router.get('/vitals/:patientId', auth, async (req, res) => {
   try {
     const limit = Math.min(Math.max(parseInt(req.query.limit) || 50, 1), 500);
-    const vitals = await Vitals.find({ patientId: req.params.patientId }).select('-ecgWaveform').sort({ timestamp: -1 }).limit(limit).lean();
+    const vitals = await Vitals.find({ patientId: req.params.patientId, ...NOT_DEVICE_OFF }).select('-ecgWaveform').sort({ timestamp: -1 }).limit(limit).lean();
     res.json({ success: true, data: vitals });
   } catch (e) { fail(res, e); }
 });
 
 router.get('/vitals/:patientId/latest', auth, async (req, res) => {
   try {
-    const v = await Vitals.findOne({ patientId: req.params.patientId }).sort({ timestamp: -1 }).lean();
+    const v = await Vitals.findOne({ patientId: req.params.patientId, ...NOT_DEVICE_OFF }).sort({ timestamp: -1 }).lean();
     if (!v) return res.status(404).json({ success: false, error: 'No vitals found' });
     res.json({ success: true, data: v });
   } catch (e) { fail(res, e); }
@@ -79,6 +79,7 @@ router.get('/vitals/:patientId/latest', auth, async (req, res) => {
 router.post('/vitals/:patientId', auth, async (req, res) => {
   try {
     const r = await processVitals(req.params.patientId, req.body);
+    if (r.offline) return res.json({ success: true, offline: true, message: 'All probes read 0: device treated as offline, reading not stored' });
     if (r.error) return res.status(r.status).json({ success: false, error: r.error });
     res.status(201).json({ success: true, data: r.reading, news2: r.news2 });
   } catch (e) { fail(res, e, 400); }
@@ -119,32 +120,39 @@ router.post('/ai/:patientId', auth, async (req, res) => {
     const { patientId } = req.params;
     const patient = await Patient.findOne({ patientId, active: true }).lean();
     if (!patient) return res.status(404).json({ success: false, error: 'Patient not found' });
-    const vitals = await Vitals.findOne({ patientId }).sort({ timestamp: -1 }).lean();
+    const vitals = await Vitals.findOne({ patientId, ...NOT_DEVICE_OFF }).sort({ timestamp: -1 }).lean();
     if (!vitals) return res.status(404).json({ success: false, error: 'No vitals found for patient' });
 
-    const news2 = calcNEWS2(vitals);
-    const ageMin = Math.round((Date.now() - new Date(vitals.timestamp).getTime()) / 60000);
+    // Readings stored before validation existed (or sensor faults) can contain impossible values such as 0 bpm.
+    // Score only plausible values and tell the model which ones were rejected.
+    const { data: plausible, invalid } = sanitize(vitals);
+    const news2 = calcNEWS2(plausible);
+    const ageMs = Date.now() - new Date(vitals.timestamp).getTime();
+    const deviceOffline = ageMs > 15000;   // same rule as the apps: no new reading for 15s = offline
+    const ageMin = Math.round(ageMs / 60000);
     const show = (x, unit) => (typeof x === 'number' ? `${x}${unit}` : 'not measured');
 
     const systemPrompt = `You are the AI Assistant Doctor in MediWatch, a hospital patient monitoring system. You provide clinical decision support to nursing staff when a doctor is not immediately available.
 
 Patient: ${patient.name} | Condition: ${patient.condition || 'Unknown'} | Age: ${patient.age || 'unknown'} | Gender: ${patient.gender || 'unknown'}
 
-Latest vitals (recorded ${ageMin} minute${ageMin === 1 ? '' : 's'} ago${ageMin > 5 ? ' - THESE READINGS MAY BE OUT OF DATE, tell the nurse to check the patient and the device' : ''}):
-- Heart Rate: ${show(vitals.heartRate, ' bpm')}
-- SpO2: ${show(vitals.spo2, '%')}
-- Blood Pressure: ${show(vitals.systolic, '')}/${show(vitals.diastolic, '')} mmHg
-- Respiratory Rate: ${show(vitals.respRate, ' breaths/min')}
-- Temperature: ${show(vitals.temperature, '°C')}
+${deviceOffline ? `DEVICE STATUS: OFFLINE. The monitoring device is not sending data (last valid reading ${ageMin < 1 ? 'under a minute' : `${ageMin} minute${ageMin === 1 ? '' : 's'}`} ago). The patient's current condition is UNKNOWN. Say this clearly at the start of your answer, do not describe the patient as stable or in danger based on old numbers, and tell the nurse to assess the patient at the bedside, take manual measurements and check that the device is on and the probes are attached.\n\n` : 'DEVICE STATUS: ONLINE\n\n'}${deviceOffline ? 'Last valid vitals' : 'Latest vitals'}:
+- Heart Rate: ${show(plausible.heartRate, ' bpm')}
+- SpO2: ${show(plausible.spo2, '%')}
+- Blood Pressure: ${show(plausible.systolic, '')}/${show(plausible.diastolic, '')} mmHg
+- Respiratory Rate: ${show(plausible.respRate, ' breaths/min')}
+- Temperature: ${show(plausible.temperature, '°C')}
 - NEWS2 Score: ${news2.total} (${news2.level})
 - Abnormal Parameters: ${news2.abnormal.length ? news2.abnormal.join(', ') : 'None'}
-
+${invalid.length ? `- IMPLAUSIBLE VALUES IGNORED (${invalid.map(f => `${f}=${vitals[f]}`).join(', ')}): treat these as a probe fault, not as real patient values, and tell the nurse to check that probe.\n` : ''}
 Rules:
 - Be concise and clinically accurate
 - Give actionable first-response guidance appropriate for nursing staff
 - Always recommend contacting a doctor urgently for NEWS2 >= 7
 - Never prescribe medications or make definitive diagnoses
-- If NEWS2 is CRITICAL, start your response with "URGENT:"`;
+- If the device is OFFLINE, start your response with "DEVICE OFFLINE:" and do not give a risk assessment from the old numbers
+- If NEWS2 is CRITICAL and the device is ONLINE, start your response with "URGENT:"
+- Format: short sections, each with a bold heading line, then bullet points. No tables. Keep it under 250 words.`;
 
     const gr = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST',

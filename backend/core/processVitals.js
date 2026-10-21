@@ -1,5 +1,5 @@
 const { calcNEWS2 } = require('./news2');
-const { broadcastVitals, broadcastAlert } = require('./websocket');
+const { broadcastVitals, broadcastAlert, broadcastDeviceOffline } = require('./websocket');
 const { Vitals, Alert, Patient } = require('../db/models');
 
 const RANGES = {
@@ -29,10 +29,26 @@ function sanitize(raw = {}) {
 
 const VITAL_KEYS = Object.keys(RANGES);
 
+// When the device is switched off or the probes are not on the patient, it reports 0 on every vital probe.
+// (Temperature is ignored: it keeps reading the room.) That means "device offline", not a patient value.
+const PROBES = ['heartRate', 'spo2', 'systolic', 'diastolic', 'respRate'];
+const isDeviceOff = (raw = {}) => {
+  const present = PROBES.filter(k => raw[k] !== undefined && raw[k] !== null && raw[k] !== '');
+  return present.length > 0 && present.every(k => Number(raw[k]) === 0);
+};
+// Mongo filter that skips any "all zeros" reading that was stored before this rule existed
+const NOT_DEVICE_OFF = { $nor: [{ heartRate: 0, spo2: 0, systolic: 0, diastolic: 0, respRate: 0 }] };
+
 // Shared by MQTT and the REST endpoint: validate, score, store, broadcast, alert
 async function processVitals(patientId, raw) {
   const patient = await Patient.findOne({ patientId, active: true }).lean();
   if (!patient) return { error: 'Patient not found', status: 404 };
+
+  // All-zero reading = device off. Do not store, score or alert; tell the clients it is offline.
+  if (isDeviceOff(raw)) {
+    broadcastDeviceOffline(patientId);
+    return { offline: true };
+  }
 
   const { data, invalid } = sanitize(raw);
   if (invalid.length) return { error: `Invalid values: ${invalid.join(', ')}`, status: 400, invalid };
@@ -58,4 +74,4 @@ async function processVitals(patientId, raw) {
   return { reading, news2 };
 }
 
-module.exports = { processVitals, sanitize };
+module.exports = { processVitals, sanitize, isDeviceOff, NOT_DEVICE_OFF };

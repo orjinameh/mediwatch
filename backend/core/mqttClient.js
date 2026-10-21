@@ -18,6 +18,7 @@ function initMQTT() {
       const patientId = topic.split('/')[2];
       const raw = JSON.parse(payload.toString());
       const r = await processVitals(patientId, raw);
+      if (r.offline) return; // device off, reported as offline to clients
       if (r.error) console.warn(`[mqtt] dropped reading for ${patientId}: ${r.error}`);
     } catch (e) { console.error('[mqtt] message error:', e.message); }
   });

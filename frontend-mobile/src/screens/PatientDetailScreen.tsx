@@ -6,6 +6,7 @@ import {
 import { PURPLE, PURPLE_DARK, news2Color, isStale } from '../theme';
 import { apiFetch, useWebSocket, useNow } from '../hooks/useApi';
 import Icon from '../components/Icon';
+import Markdown from '../components/Markdown';
 
 const VitalCard = ({ icon, label, value, unit, sub, color }: any) => (
   <View style={styles.vitalCard}>
@@ -185,7 +186,7 @@ export default function PatientDetailScreen({ route, navigation }: any) {
               <View style={{ marginTop: 12 }}>
                 {aiResponse !== '' && (
                   <View style={styles.aiResponse}>
-                    <Text style={styles.aiResponseText}>{aiResponse}</Text>
+                    <Markdown text={aiResponse} color="#4B0082" />
                   </View>
                 )}
                 <View style={styles.aiInputRow}>

@@ -61,6 +61,9 @@ export function useWebSocket() {
             const data = { ...msg.data, timestamp: msg.data?.timestamp || msg.timestamp };
             setVitalsMap(prev => ({ ...prev, [msg.patientId]: data }));
           }
+          if (msg.type === 'DEVICE_OFFLINE') {
+            setVitalsMap(prev => ({ ...prev, [msg.patientId]: { ...(prev[msg.patientId] || {}), offline: true } }));
+          }
           if (msg.type === 'ALERT') {
             setAlerts(prev => [{ ...msg.data, timestamp: msg.data?.timestamp || msg.timestamp }, ...prev.slice(0, 19)]);
           }

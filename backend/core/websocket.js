@@ -50,6 +50,12 @@ function broadcastVitals(patientId, data) {
   targets.forEach(ws => send(ws, msg));
 }
 
+function broadcastDeviceOffline(patientId) {
+  const msg = JSON.stringify({ type: 'DEVICE_OFFLINE', patientId, timestamp: new Date().toISOString() });
+  const targets = new Set([...(subscriptions.get(patientId) || []), ...(subscriptions.get('ALL') || [])]);
+  targets.forEach(ws => send(ws, msg));
+}
+
 function broadcastAlert(patientId, data) {
   const msg = JSON.stringify({ type: 'ALERT', patientId, timestamp: new Date().toISOString(), data });
   clients.forEach(ws => send(ws, msg));
@@ -60,4 +66,4 @@ function broadcastAIResponse(patientId, data) {
   (subscriptions.get(patientId) || []).forEach(ws => send(ws, msg));
 }
 
-module.exports = { initWebSocket, broadcastVitals, broadcastAlert, broadcastAIResponse };
+module.exports = { initWebSocket, broadcastVitals, broadcastDeviceOffline, broadcastAlert, broadcastAIResponse };

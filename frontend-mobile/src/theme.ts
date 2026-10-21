@@ -23,6 +23,7 @@ export const news2Color = (score: number) => {
 // A reading older than this means the device has stopped sending
 export const STALE_MS = 15000;
 export const isStale = (v: any, now = Date.now()) => {
+  if (v?.offline) return true;   // server reported the device off (all probes 0)
   const t = v?.timestamp ? new Date(v.timestamp).getTime() : 0;
   return !t || now - t > STALE_MS;
 };
