@@ -1,17 +1,17 @@
 'use client';
+import Icon from '@/components/Icon';
 import { useEffect, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { PURPLE, PURPLE_DARK, news2Color } from '@/lib/theme';
 import { patientApi, vitalsApi, aiApi, alertApi } from '@/lib/api';
 import { useWebSocket } from '@/hooks/useWebSocket';
-import ECGWaveform from '@/components/ECGWaveform';
 import BottomNav from '@/components/BottomNav';
 import ProtectedRoute from '@/components/ProtectedRoute';
 
 const VCard = ({ icon, label, value, unit, sub, color }: any) => (
   <div style={{ background:'white', borderRadius:16, padding:16, boxShadow:'0 2px 12px rgba(107,33,168,0.06)', flex:'1 1 45%' }}>
     <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:8 }}>
-      <span style={{ fontSize:22 }}>{icon}</span>
+      <span style={{ fontSize:22 }}><Icon name={icon} /></span>
       <span style={{ fontSize:11, color:'#9CA3AF' }}>{label}</span>
     </div>
     <div style={{ fontSize:28, fontWeight:800, color:color||'#111', lineHeight:1 }}>{value}</div>
@@ -105,13 +105,13 @@ export default function PatientDetailPage() {
         {/* Header */}
         <div style={{ background:`linear-gradient(135deg, ${PURPLE_DARK}, ${PURPLE})`, padding:'52px 20px 28px', borderRadius:'0 0 30px 30px' }}>
           <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:14 }}>
-            <button onClick={() => router.back()} style={{ background:'rgba(255,255,255,0.2)', border:'none', borderRadius:10, width:36, height:36, color:'white', fontSize:18, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center' }}>←</button>
+            <button onClick={() => router.back()} style={{ background:'rgba(255,255,255,0.2)', border:'none', borderRadius:10, width:36, height:36, color:'white', fontSize:18, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center' }}><Icon name="arrowLeft" /></button>
             <button onClick={handleDelete} disabled={deleting} style={{ background:'rgba(239,68,68,0.3)', border:'1px solid rgba(239,68,68,0.5)', borderRadius:10, padding:'6px 12px', color:'white', fontSize:12, cursor:'pointer' }}>
-              {deleting ? '...' : '🗑️ Remove'}
+              {deleting ? '...' : <><Icon name="trash" /> Remove</>}
             </button>
           </div>
           <div style={{ display:'flex', gap:14 }}>
-            <div style={{ width:56, height:56, borderRadius:'50%', background:'rgba(255,255,255,0.25)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:26, border:'2px solid rgba(255,255,255,0.5)', flexShrink:0 }}>👤</div>
+            <div style={{ width:56, height:56, borderRadius:'50%', background:'rgba(255,255,255,0.25)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:26, border:'2px solid rgba(255,255,255,0.5)', flexShrink:0 }}><Icon name="user" /></div>
             <div style={{ flex:1 }}>
               <h2 style={{ color:'white', fontSize:20, fontWeight:800, marginBottom:2 }}>{patient.name}</h2>
               <p style={{ color:'rgba(255,255,255,0.8)', fontSize:13, marginBottom:4 }}>
@@ -130,10 +130,10 @@ export default function PatientDetailPage() {
 
         {/* Tabs */}
         <div style={{ display:'flex', padding:'0 16px', marginTop:16, gap:8, marginBottom:4 }}>
-          {([['vitals','📊 Vitals'],['ai','🤖 AI Doctor'],['alerts','🔔 Alerts']] as const).map(([t,l]) => (
+          {([['vitals','Vitals','chart'],['ai','AI Doctor','bot'],['alerts','Alerts','bell']] as const).map(([t,l,ic]) => (
             <button key={t} onClick={() => setTab(t)}
               style={{ flex:1, background:tab===t ? PURPLE : 'white', color:tab===t ? 'white' : '#6B7280', border:`1px solid ${tab===t ? PURPLE : '#E5E7EB'}`, borderRadius:10, padding:'9px 4px', fontSize:12, fontWeight:tab===t?700:400, cursor:'pointer' }}>
-              {l}
+              <Icon name={ic} /> {l}
             </button>
           ))}
         </div>
@@ -144,32 +144,23 @@ export default function PatientDetailPage() {
           {tab === 'vitals' && <>
             {offline && (
               <div style={{ background:'#FEF3C7', border:'1px solid #F59E0B', color:'#92400E', borderRadius:12, padding:'10px 14px', fontSize:12, marginBottom:12 }}>
-                ⚠️ Device offline — no live data{lastTs ? ` since ${new Date(lastTs).toLocaleTimeString()}` : ''}
+                <Icon name="alert" /> Device offline — no live data{lastTs ? ` since ${new Date(lastTs).toLocaleTimeString()}` : ''}
               </div>
             )}
             <div style={{ display:'flex', flexWrap:'wrap', gap:12, marginBottom:14 }}>
-              <VCard icon="🫁" label="Respiratory Rate" value={V?.respRate ? Math.round(V.respRate) : '—'} unit="breath/min" color={V?.respRate > 25 ? '#EF4444' : PURPLE} />
-              <VCard icon="❤️" label="Heart Rate"       value={V?.heartRate ? Math.round(V.heartRate) : '—'} unit="bpm" color={V?.heartRate > 100 ? '#EF4444' : '#EF4444'} />
-              <VCard icon="💧" label="SpO2"             value={V?.spo2 ? `${V.spo2.toFixed(0)}%` : '—'} color={V?.spo2 < 93 ? '#EF4444' : PURPLE} />
-              <VCard icon="〰️" label="ECG"             value="Normal" sub="Sinus Rhythm" color="#111" />
-            </div>
-
-            <div style={{ background:'white', borderRadius:16, padding:16, marginBottom:14, boxShadow:'0 2px 12px rgba(107,33,168,0.06)' }}>
-              <div style={{ display:'flex', justifyContent:'space-between', marginBottom:10 }}>
-                <span style={{ fontSize:14, fontWeight:700, color:'#111' }}>ECG Waveform</span>
-                <span style={{ fontSize:12, color:'#9CA3AF' }}>10mm/mv</span>
-              </div>
-              <div style={{ background:'#FDF2F8', borderRadius:12, padding:10 }}><ECGWaveform /></div>
+              <VCard icon="lungs" label="Respiratory Rate" value={V?.respRate ? Math.round(V.respRate) : '—'} unit="breath/min" color={V?.respRate > 25 ? '#EF4444' : PURPLE} />
+              <VCard icon="heart" label="Heart Rate"       value={V?.heartRate ? Math.round(V.heartRate) : '—'} unit="bpm" color={V?.heartRate > 100 ? '#EF4444' : '#EF4444'} />
+              <VCard icon="droplet" label="SpO2"             value={V?.spo2 ? `${V.spo2.toFixed(0)}%` : '—'} color={V?.spo2 < 93 ? '#EF4444' : PURPLE} />
             </div>
 
             <div style={{ display:'flex', gap:12, marginBottom:14 }}>
               <div style={{ flex:1, background:'white', borderRadius:16, padding:16, boxShadow:'0 2px 12px rgba(107,33,168,0.06)' }}>
-                <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:8 }}><span style={{ fontSize:22 }}>🩺</span><span style={{ fontSize:11, color:'#9CA3AF' }}>Blood Pressure</span></div>
+                <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:8 }}><span style={{ fontSize:22 }}><Icon name="stethoscope" /></span><span style={{ fontSize:11, color:'#9CA3AF' }}>Blood Pressure</span></div>
                 <div style={{ fontSize:22, fontWeight:800, color:'#111' }}>{V?.systolic && V?.diastolic ? `${Math.round(V.systolic)}/${Math.round(V.diastolic)}` : '—'}</div>
                 <div style={{ fontSize:11, color:'#9CA3AF', marginTop:4 }}>mmHg</div>
               </div>
               <div style={{ flex:1, background:'white', borderRadius:16, padding:16, boxShadow:'0 2px 12px rgba(107,33,168,0.06)' }}>
-                <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:8 }}><span style={{ fontSize:22 }}>🌡️</span><span style={{ fontSize:11, color:'#9CA3AF' }}>Temperature</span></div>
+                <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:8 }}><span style={{ fontSize:22 }}><Icon name="thermometer" /></span><span style={{ fontSize:11, color:'#9CA3AF' }}>Temperature</span></div>
                 <div style={{ fontSize:22, fontWeight:800, color:V?.temperature > 38 ? '#EF4444' : '#111' }}>{V?.temperature ? `${V.temperature.toFixed(1)}°C` : '—'}</div>
               </div>
             </div>
@@ -190,7 +181,7 @@ export default function PatientDetailPage() {
           {/* AI DOCTOR TAB */}
           {tab === 'ai' && <>
             <div style={{ background:'white', borderRadius:16, padding:16, marginBottom:14, boxShadow:'0 2px 12px rgba(107,33,168,0.06)' }}>
-              <div style={{ fontSize:14, fontWeight:700, color:'#111', marginBottom:4 }}>🤖 AI Assistant Doctor</div>
+              <div style={{ fontSize:14, fontWeight:700, color:'#111', marginBottom:4 }}><Icon name="bot" /> AI Assistant Doctor</div>
               <div style={{ fontSize:12, color:'#9CA3AF', marginBottom:16 }}>Ask about {patient.name}'s condition. Context: current vitals + NEWS2 score {V?.news2Score ?? '—'}.</div>
 
               {/* Quick prompts */}
@@ -240,7 +231,7 @@ export default function PatientDetailPage() {
           {tab === 'alerts' && <>
             {patAlerts.length === 0
               ? <div style={{ textAlign:'center', padding:'40px 20px', color:'#9CA3AF' }}>
-                  <div style={{ fontSize:48, marginBottom:12 }}>✅</div>
+                  <div style={{ fontSize:48, marginBottom:12 }}><Icon name="check" /></div>
                   <div style={{ fontSize:15, fontWeight:600 }}>No alerts for this patient</div>
                 </div>
               : patAlerts.map(a => (
@@ -258,7 +249,7 @@ export default function PatientDetailPage() {
                       Acknowledge
                     </button>
                   )}
-                  {a.acknowledged && <span style={{ fontSize:11, color:'#16A34A' }}>✓ Acknowledged by {a.acknowledgedBy}</span>}
+                  {a.acknowledged && <span style={{ fontSize:11, color:'#16A34A' }}><Icon name="tick" /> Acknowledged by {a.acknowledgedBy}</span>}
                 </div>
               ))
             }

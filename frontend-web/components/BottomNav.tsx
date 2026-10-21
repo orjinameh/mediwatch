@@ -1,11 +1,12 @@
 'use client';
+import Icon from '@/components/Icon';
 import { useRouter, usePathname } from 'next/navigation';
 import { PURPLE } from '@/lib/theme';
 
 const NAV = [
-  { path:'/home',     emoji:'🏠', label:'Home' },
-  { path:'/patients', emoji:'👥', label:'patients' },
-  { path:'/settings', emoji:'⚙️', label:'settings' },
+  { path:'/home',     emoji:'home', label:'Home' },
+  { path:'/patients', emoji:'users', label:'patients' },
+  { path:'/settings', emoji:'settings', label:'settings' },
 ];
 
 export default function BottomNav() {
@@ -18,7 +19,7 @@ export default function BottomNav() {
         return (
           <button key={path} onClick={() => router.push(path)}
             style={{ flex:1, background:'none', border:'none', cursor:'pointer', display:'flex', flexDirection:'column', alignItems:'center', gap:4 }}>
-            <div style={{ width:42, height:42, borderRadius:12, background:active ? PURPLE : 'transparent', display:'flex', alignItems:'center', justifyContent:'center', fontSize:20 }}>{emoji}</div>
+            <div style={{ width:42, height:42, borderRadius:12, background:active ? PURPLE : 'transparent', display:'flex', alignItems:'center', justifyContent:'center', fontSize:20 }}><Icon name={emoji} /></div>
             <span style={{ fontSize:11, color:active ? PURPLE : '#9CA3AF', fontWeight:active ? 600 : 400 }}>{label}</span>
           </button>
         );

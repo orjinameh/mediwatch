@@ -1,4 +1,5 @@
 'use client';
+import Icon from '@/components/Icon';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -38,7 +39,7 @@ export default function SignupPage() {
   return (
     <div style={{ minHeight:'100vh', background:`linear-gradient(160deg, ${PURPLE_DARK} 0%, ${PURPLE} 100%)`, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', padding:20 }}>
 
-      <div style={{ width:80, height:80, background:'white', borderRadius:22, display:'flex', alignItems:'center', justifyContent:'center', marginBottom:16, fontSize:40, boxShadow:'0 8px 32px rgba(0,0,0,0.2)' }}>⚕️</div>
+      <div style={{ width:80, height:80, background:'white', borderRadius:22, display:'flex', alignItems:'center', justifyContent:'center', marginBottom:16, fontSize:40, boxShadow:'0 8px 32px rgba(0,0,0,0.2)' }}><Icon name="cross" color="#6B21A8" /></div>
       <h1 style={{ color:'white', fontSize:26, fontWeight:800, marginBottom:4 }}>Create Account</h1>
       <p style={{ color:'rgba(255,255,255,0.7)', fontSize:14, marginBottom:28, textAlign:'center' }}>Join MediWatch AI to monitor<br />your patients in real time</p>
 
@@ -47,13 +48,13 @@ export default function SignupPage() {
 
         {/* Full name */}
         <div style={rowStyle}>
-          <span style={{ fontSize:18 }}>👤</span>
+          <span style={{ fontSize:18 }}><Icon name="user" /></span>
           <input value={form.name} onChange={set('name')} placeholder="Full name" style={inputStyle} />
         </div>
 
         {/* Email */}
         <div style={rowStyle}>
-          <span style={{ fontSize:18 }}>✉️</span>
+          <span style={{ fontSize:18 }}><Icon name="mail" /></span>
           <input type="email" value={form.email} onChange={set('email')} placeholder="Email address" style={inputStyle} />
         </div>
 
@@ -69,14 +70,14 @@ export default function SignupPage() {
 
         {/* Password */}
         <div style={rowStyle}>
-          <span style={{ fontSize:18 }}>🔒</span>
+          <span style={{ fontSize:18 }}><Icon name="lock" /></span>
           <input type={showPw ? 'text' : 'password'} value={form.password} onChange={set('password')} placeholder="Password (min 6 chars)" style={inputStyle} />
-          <span onClick={() => setShowPw(s=>!s)} style={{ cursor:'pointer', fontSize:16, color:'#9CA3AF' }}>{showPw ? '🙈' : '👁️'}</span>
+          <span onClick={() => setShowPw(s=>!s)} style={{ cursor:'pointer', fontSize:16, color:'#9CA3AF' }}><Icon name={showPw ? 'eyeOff' : 'eye'} /></span>
         </div>
 
         {/* Confirm password */}
         <div style={rowStyle}>
-          <span style={{ fontSize:18 }}>🔒</span>
+          <span style={{ fontSize:18 }}><Icon name="lock" /></span>
           <input type={showPw ? 'text' : 'password'} value={form.confirmPassword} onChange={set('confirmPassword')} placeholder="Confirm password"
             onKeyDown={e => e.key==='Enter' && handleSignup()} style={inputStyle} />
         </div>

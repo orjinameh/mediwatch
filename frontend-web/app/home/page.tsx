@@ -1,4 +1,5 @@
 'use client';
+import Icon from '@/components/Icon';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { PURPLE, PURPLE_DARK, STATUS, news2Color } from '@/lib/theme';
@@ -57,7 +58,7 @@ export default function HomePage() {
               </div>
               {/* Bell */}
               <div style={{ position:'relative', cursor:'pointer' }} onClick={() => router.push('/patients')}>
-                <span style={{ fontSize:24 }}>🔔</span>
+                <span style={{ fontSize:24 }}><Icon name="bell" /></span>
                 {alerts.length > 0 && (
                   <div style={{ position:'absolute', top:-4, right:-4, background:'#EF4444', borderRadius:'50%', width:18, height:18, display:'flex', alignItems:'center', justifyContent:'center', fontSize:10, color:'white', fontWeight:800 }}>
                     {alerts.length > 9 ? '9+' : alerts.length}
@@ -65,7 +66,7 @@ export default function HomePage() {
                 )}
               </div>
               {/* Avatar */}
-              <div style={{ width:42, height:42, borderRadius:'50%', background:'rgba(255,255,255,0.3)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:22, border:'2px solid white' }}>👨‍⚕️</div>
+              <div style={{ width:42, height:42, borderRadius:'50%', background:'rgba(255,255,255,0.3)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:22, border:'2px solid white' }}><Icon name="stethoscope" /></div>
             </div>
           </div>
         </div>
@@ -76,7 +77,7 @@ export default function HomePage() {
           {alerts.length > 0 && (
             <div style={{ background:'#FEF2F2', border:'1px solid #FECACA', borderRadius:14, padding:'12px 16px', marginBottom:14 }}>
               <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:8 }}>
-                <span style={{ fontWeight:700, color:'#DC2626', fontSize:14 }}>🚨 Active Alerts ({alerts.length})</span>
+                <span style={{ fontWeight:700, color:'#DC2626', fontSize:14 }}><Icon name="alert" /> Active Alerts ({alerts.length})</span>
               </div>
               {alerts.slice(0,2).map((a, i) => (
                 <div key={i} style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'6px 0', borderTop:'1px solid #FECACA' }}>
@@ -96,12 +97,12 @@ export default function HomePage() {
             </div>
             <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:10 }}>
               {[
-                { icon:'👥', label:'Total patients', value:patients.length, color:PURPLE },
-                { icon:'⚠️', label:'Need Attention',  value:needAttention.length, color:'#F59E0B' },
-                { icon:'✅', label:'Normal',           value:normal, color:'#16A34A' },
+                { icon:'users', label:'Total patients', value:patients.length, color:PURPLE },
+                { icon:'alert', label:'Need Attention',  value:needAttention.length, color:'#F59E0B' },
+                { icon:'check', label:'Normal',           value:normal, color:'#16A34A' },
               ].map(({ icon, label, value, color }) => (
                 <div key={label} style={{ textAlign:'center', background:'#FAFAFA', borderRadius:14, padding:'12px 8px' }}>
-                  <div style={{ fontSize:24, marginBottom:4 }}>{icon}</div>
+                  <div style={{ fontSize:24, marginBottom:4 }}><Icon name={icon} /></div>
                   <div style={{ fontSize:10, color:'#9CA3AF', marginBottom:4 }}>{label}</div>
                   <div style={{ fontSize:26, fontWeight:800, color }}>{value}</div>
                 </div>
@@ -121,7 +122,7 @@ export default function HomePage() {
                 return (
                   <div key={p._id} onClick={() => router.push(`/patients/${p.patientId}`)}
                     style={{ display:'flex', alignItems:'center', gap:12, padding:'11px 0', borderBottom:'1px solid #F3F4F6', cursor:'pointer' }}>
-                    <div style={{ width:44, height:44, borderRadius:'50%', background:'#FEE2E2', display:'flex', alignItems:'center', justifyContent:'center', fontSize:22, flexShrink:0 }}>❤️</div>
+                    <div style={{ width:44, height:44, borderRadius:'50%', background:'#FEE2E2', display:'flex', alignItems:'center', justifyContent:'center', fontSize:22, flexShrink:0 }}><Icon name="heart" /></div>
                     <div style={{ flex:1 }}>
                       <div style={{ fontWeight:600, fontSize:15, color:'#111' }}>{p.name}</div>
                       <div style={{ fontSize:12, color:'#9CA3AF' }}>{p.condition || 'General'}</div>
@@ -154,7 +155,7 @@ export default function HomePage() {
                   return (
                     <div key={p._id} onClick={() => router.push(`/patients/${p.patientId}`)}
                       style={{ display:'flex', alignItems:'center', gap:12, padding:'11px 0', borderBottom:'1px solid #F3F4F6', cursor:'pointer' }}>
-                      <div style={{ width:44, height:44, borderRadius:'50%', background:PURPLE+'20', display:'flex', alignItems:'center', justifyContent:'center', fontSize:22, flexShrink:0 }}>👤</div>
+                      <div style={{ width:44, height:44, borderRadius:'50%', background:PURPLE+'20', display:'flex', alignItems:'center', justifyContent:'center', fontSize:22, flexShrink:0 }}><Icon name="user" /></div>
                       <div style={{ flex:1 }}>
                         <div style={{ fontWeight:600, fontSize:15, color:'#111' }}>{p.name}</div>
                         <div style={{ fontSize:12, color:'#9CA3AF' }}>{p.condition || 'General'}</div>

@@ -1,4 +1,5 @@
 'use client';
+import Icon from '@/components/Icon';
 import { useState } from 'react';
 import { PURPLE, PURPLE_DARK } from '@/lib/theme';
 import { authApi } from '@/lib/api';
@@ -37,12 +38,12 @@ export default function SettingsPage() {
   const card: any = { background:'white', borderRadius:20, padding:20, marginBottom:14, boxShadow:'0 2px 12px rgba(107,33,168,0.06)' };
 
   const MENU = [
-    { icon:'👤', label:'Profile',           sub:'Your account information' },
-    { icon:'🔒', label:'Security',          sub:'Password & privacy' },
-    { icon:'🔔', label:'Notifications',     sub:'Alert preferences' },
-    { icon:'🏥', label:'Clinic Settings',   sub:'Ward and facility info' },
-    { icon:'❓', label:'Help & Support',    sub:'Documentation and contact' },
-    { icon:'ℹ️', label:'About MediWatch AI', sub:'Version 1.0.0 — IoT Patient Monitor' },
+    { icon:'user', label:'Profile',           sub:'Your account information' },
+    { icon:'lock', label:'Security',          sub:'Password & privacy' },
+    { icon:'bell', label:'Notifications',     sub:'Alert preferences' },
+    { icon:'hospital', label:'Clinic Settings',   sub:'Ward and facility info' },
+    { icon:'help', label:'Help & Support',    sub:'Documentation and contact' },
+    { icon:'info', label:'About MediWatch AI', sub:'Version 1.0.0 — IoT Patient Monitor' },
   ];
 
   return (
@@ -56,7 +57,7 @@ export default function SettingsPage() {
 
         {/* Profile card */}
         <div style={{ margin:'16px 16px 0', background:'white', borderRadius:20, padding:20, display:'flex', alignItems:'center', gap:16, boxShadow:'0 4px 20px rgba(107,33,168,0.08)' }}>
-          <div style={{ width:64, height:64, borderRadius:'50%', background:PURPLE+'20', display:'flex', alignItems:'center', justifyContent:'center', fontSize:32 }}>👨‍⚕️</div>
+          <div style={{ width:64, height:64, borderRadius:'50%', background:PURPLE+'20', display:'flex', alignItems:'center', justifyContent:'center', fontSize:32 }}><Icon name="stethoscope" /></div>
           <div style={{ flex:1 }}>
             <div style={{ fontSize:18, fontWeight:800, color:'#111', marginBottom:2 }}>{user?.name}</div>
             <div style={{ fontSize:13, color:'#9CA3AF', marginBottom:6 }}>{user?.email}</div>
@@ -70,18 +71,18 @@ export default function SettingsPage() {
 
           {/* Change Password section */}
           <div style={card}>
-            <div style={{ fontSize:14, fontWeight:700, color:'#111', marginBottom:4 }}>🔒 Change Password</div>
+            <div style={{ fontSize:14, fontWeight:700, color:'#111', marginBottom:4 }}><Icon name="lock" /> Change Password</div>
             <div style={{ fontSize:12, color:'#9CA3AF', marginBottom:16 }}>Update your account password</div>
 
             {pwError   && <div style={{ background:'#FEE2E2', color:'#DC2626', padding:'10px 14px', borderRadius:10, marginBottom:12, fontSize:13 }}>{pwError}</div>}
-            {pwSuccess && <div style={{ background:'#DCFCE7', color:'#16A34A', padding:'10px 14px', borderRadius:10, marginBottom:12, fontSize:13 }}>✅ {pwSuccess}</div>}
+            {pwSuccess && <div style={{ background:'#DCFCE7', color:'#16A34A', padding:'10px 14px', borderRadius:10, marginBottom:12, fontSize:13 }}><Icon name="check" /> {pwSuccess}</div>}
 
             <div style={{ marginBottom:12 }}>
               <label style={{ fontSize:12, fontWeight:600, color:'#374151', marginBottom:6, display:'block' }}>Current Password</label>
               <div style={{ display:'flex', alignItems:'center', border:'1.5px solid #E5E7EB', borderRadius:12, padding:'12px 16px', gap:10 }}>
                 <input type={showPw ? 'text' : 'password'} value={pwForm.currentPassword} onChange={setPw('currentPassword')} placeholder="Enter current password"
                   style={{ border:'none', outline:'none', flex:1, fontSize:15, color:'#111', background:'transparent' }} />
-                <span onClick={() => setShowPw(s=>!s)} style={{ cursor:'pointer', fontSize:16, color:'#9CA3AF' }}>{showPw ? '🙈' : '👁️'}</span>
+                <span onClick={() => setShowPw(s=>!s)} style={{ cursor:'pointer', fontSize:16, color:'#9CA3AF' }}><Icon name={showPw ? 'eyeOff' : 'eye'} /></span>
               </div>
             </div>
 
@@ -105,7 +106,7 @@ export default function SettingsPage() {
           {/* Menu items */}
           {MENU.filter(m => m.label !== 'Security').map(({ icon, label, sub }) => (
             <div key={label} style={{ background:'white', borderRadius:16, padding:16, marginBottom:10, display:'flex', alignItems:'center', gap:14, cursor:'pointer', boxShadow:'0 2px 12px rgba(107,33,168,0.05)' }}>
-              <div style={{ width:44, height:44, borderRadius:12, background:PURPLE+'15', display:'flex', alignItems:'center', justifyContent:'center', fontSize:22 }}>{icon}</div>
+              <div style={{ width:44, height:44, borderRadius:12, background:PURPLE+'15', display:'flex', alignItems:'center', justifyContent:'center', fontSize:22 }}><Icon name={icon} /></div>
               <div style={{ flex:1 }}>
                 <div style={{ fontWeight:600, fontSize:15, color:'#111' }}>{label}</div>
                 <div style={{ fontSize:12, color:'#9CA3AF' }}>{sub}</div>
@@ -122,7 +123,7 @@ export default function SettingsPage() {
 
           <p style={{ textAlign:'center', fontSize:11, color:'#9CA3AF', marginTop:16 }}>
             MediWatch AI v1.0.0 · IoT Patient Monitoring System<br />
-            Built with ❤️ for Nigerian healthcare
+            Built with <Icon name="heart" /> for Nigerian healthcare
           </p>
         </div>
 
